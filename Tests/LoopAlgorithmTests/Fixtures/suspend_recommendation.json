@@ -1,0 +1,10 @@
+{
+  "automatic" : {
+    "basalAdjustment" : {
+      "duration" : 1800,
+      "unitsPerHour" : 0
+    },
+    "bolusUnits" : 0
+  }
+}
+
