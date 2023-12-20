@@ -16,9 +16,9 @@ public enum AlgorithmInputDecodingError: Error {
     case doseVolumeMissing
 }
 
-public struct LoopAlgorithmInput<CarbType: CarbEntry> {
+public struct LoopAlgorithmInput<CarbType: CarbEntry, GlucoseType: GlucoseSampleValue> {
     public var predictionStart: Date
-    public var glucoseHistory: [StoredGlucoseSample]
+    public var glucoseHistory: [GlucoseType]
     public var doses: [DoseEntry]
     public var carbEntries: [CarbType]
     public var basal: [AbsoluteScheduleValue<Double>]
@@ -64,7 +64,7 @@ public struct LoopAlgorithmInput<CarbType: CarbEntry> {
 
     public init(
         predictionStart: Date,
-        glucoseHistory: [StoredGlucoseSample],
+        glucoseHistory: [GlucoseType],
         doses: [DoseEntry],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
@@ -128,14 +128,14 @@ extension LoopAlgorithmInput.Glucose: Codable {
 }
 
 
-extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry {
+extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry, GlucoseType == FixtureGlucoseSample {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         self.predictionStart = try container.decode(Date.self, forKey: .predictionStart)
         let glucose = try container.decode([Glucose].self, forKey: .glucoseHistory)
         self.glucoseHistory = glucose.map { sample in
-            StoredGlucoseSample(
+            FixtureGlucoseSample(
                 startDate: sample.date,
                 quantity: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: sample.value),
                 isDisplayOnly: sample.isCalibration
@@ -324,14 +324,27 @@ extension InsulinType {
 }
 
 
-extension LoopAlgorithmInput where CarbType == FixtureCarbEntry {
+extension LoopAlgorithmInput {
 
-    var simplifiedForFixture: LoopAlgorithmInput {
-        return LoopAlgorithmInput(
+    var simplifiedForFixture: LoopAlgorithmInput<FixtureCarbEntry, FixtureGlucoseSample> {
+        return LoopAlgorithmInput<FixtureCarbEntry, FixtureGlucoseSample>(
             predictionStart: predictionStart,
-            glucoseHistory: glucoseHistory,
+            glucoseHistory: glucoseHistory.map {
+                FixtureGlucoseSample(
+                    provenanceIdentifier: $0.provenanceIdentifier,
+                    startDate: $0.startDate,
+                    quantity: $0.quantity,
+                    isDisplayOnly: $0.isDisplayOnly
+                )
+            },
             doses: doses,
-            carbEntries: carbEntries,
+            carbEntries: carbEntries.map {
+                FixtureCarbEntry(
+                    absorptionTime: $0.absorptionTime,
+                    startDate: $0.startDate,
+                    quantity: $0.quantity
+                )
+            },
             basal: basal,
             sensitivity: sensitivity,
             carbRatio: carbRatio,
