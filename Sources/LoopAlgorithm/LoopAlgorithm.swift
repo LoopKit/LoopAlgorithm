@@ -100,9 +100,9 @@ public struct LoopAlgorithm {
     ///   - carbAbsorptionModel: A model conforming to CarbAbsorptionComputable that is used for computing carb absorption over time.
     /// - Returns: A LoopPrediction struct containing the predicted glucose and the computed intermediate effects used to make the prediction
 
-    public static func generatePrediction<CarbType>(
+    public static func generatePrediction<CarbType, GlucoseType>(
         start: Date,
-        glucoseHistory: [StoredGlucoseSample],
+        glucoseHistory: [GlucoseType],
         doses: [DoseEntry],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
@@ -112,7 +112,7 @@ public struct LoopAlgorithm {
         useIntegralRetrospectiveCorrection: Bool = false,
         includingPositiveVelocityAndRC: Bool = true,
         carbAbsorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption()
-    ) -> LoopPrediction where CarbType: CarbEntry {
+    ) -> LoopPrediction where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue {
 
         var prediction: [PredictedGlucoseValue] = []
         var insulinEffects: [GlucoseEffect] = []
@@ -248,7 +248,7 @@ public struct LoopAlgorithm {
     }
 
     // Helper to generate prediction with LoopPredictionInput struct
-    public static func generatePrediction<CarbType>(input: LoopPredictionInput<CarbType>) -> LoopPrediction {
+    public static func generatePrediction<CarbType, GlucoseType>(input: LoopPredictionInput<CarbType, GlucoseType>) -> LoopPrediction {
 
         return generatePrediction(
             start: input.glucoseHistory.last?.startDate ?? Date(),
@@ -360,7 +360,7 @@ public struct LoopAlgorithm {
     public static func recommendManualBolus(
         for correction: InsulinCorrection,
         maxBolus: Double,
-        currentGlucose: StoredGlucoseSample,
+        currentGlucose: GlucoseSampleValue,
         target: GlucoseRangeTimeline
     ) -> ManualBolusRecommendation {
         var bolus = correction.asManualBolus(maxBolus: maxBolus)
@@ -374,7 +374,7 @@ public struct LoopAlgorithm {
         return bolus
     }
 
-    public static func recommendDose<CarbType>(input: LoopAlgorithmInput<CarbType>) throws -> LoopAlgorithmDoseRecommendation {
+    public static func recommendDose<CarbType, GlucoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType>) throws -> LoopAlgorithmDoseRecommendation {
         let output = run(input: input)
         switch output.recommendationResult {
         case .success(let recommendation):
@@ -384,7 +384,7 @@ public struct LoopAlgorithm {
         }
     }
 
-    public static func run<CarbType>(input: LoopAlgorithmInput<CarbType>, effectOptions: AlgorithmEffectsOptions = .all) -> LoopAlgorithmOutput {
+    public static func run<CarbType, GlucoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType>, effectOptions: AlgorithmEffectsOptions = .all) -> LoopAlgorithmOutput {
 
         // If we're running for automated dosing, we calculate a dose assuming that the current temp basal will be canceled
         let inputDoses: [DoseEntry]
