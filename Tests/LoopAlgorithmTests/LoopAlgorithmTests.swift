@@ -11,7 +11,7 @@ import XCTest
 
 final class LoopAlgorithmTests: XCTestCase {
 
-    func loadScenario(_ name: String) -> (input: LoopAlgorithmInput, recommendation: LoopAlgorithmDoseRecommendation) {
+    func loadScenario(_ name: String) -> (input: LoopAlgorithmInput<FixtureCarbEntry>, recommendation: LoopAlgorithmDoseRecommendation) {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         var url = Bundle.module.url(forResource: name + "_input", withExtension: "json", subdirectory: "Fixtures")!
@@ -44,6 +44,4 @@ final class LoopAlgorithmTests: XCTestCase {
 
         XCTAssertEqual(output.recommendation, recommendation)
     }
-
-
 }
