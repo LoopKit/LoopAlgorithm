@@ -9,7 +9,7 @@
 import Foundation
 import HealthKit
 
-public struct LoopPredictionInput {
+public struct LoopPredictionInput<CarbType: CarbEntry> {
     // Algorithm input time range: t-10h to t
     public var glucoseHistory: [StoredGlucoseSample]
 
@@ -17,7 +17,7 @@ public struct LoopPredictionInput {
     public var doses: [DoseEntry]
 
     // Algorithm input time range: t-10h to t
-    public var carbEntries: [StoredCarbEntry]
+    public var carbEntries: [CarbType]
 
     // Expected time range coverage: t-16h to t
     public var basal: [AbsoluteScheduleValue<Double>]
@@ -39,7 +39,7 @@ public struct LoopPredictionInput {
     public init(
         glucoseHistory: [StoredGlucoseSample],
         doses: [DoseEntry],
-        carbEntries: [StoredCarbEntry],
+        carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
         sensitivity: [AbsoluteScheduleValue<HKQuantity>],
         carbRatio: [AbsoluteScheduleValue<Double>],
@@ -61,13 +61,13 @@ public struct LoopPredictionInput {
 }
 
 
-extension LoopPredictionInput: Codable {
+extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         self.glucoseHistory = try container.decode([StoredGlucoseSample].self, forKey: .glucoseHistory)
         self.doses = try container.decode([DoseEntry].self, forKey: .doses)
-        self.carbEntries = try container.decode([StoredCarbEntry].self, forKey: .carbEntries)
+        self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
         let sensitivityMgdl = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
         self.sensitivity = sensitivityMgdl.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.value))}
@@ -115,7 +115,7 @@ extension LoopPredictionInput: Codable {
     }
 }
 
-extension LoopPredictionInput {
+extension LoopPredictionInput where CarbType == FixtureCarbEntry {
 
     var simplifiedForFixture: LoopPredictionInput {
         return LoopPredictionInput(
@@ -128,9 +128,7 @@ extension LoopPredictionInput {
             doses: doses.map {
                 DoseEntry(type: $0.type, startDate: $0.startDate, endDate: $0.endDate, value: $0.value, unit: $0.unit)
             },
-            carbEntries: carbEntries.map {
-                StoredCarbEntry(startDate: $0.startDate, quantity: $0.quantity, absorptionTime: $0.absorptionTime)
-            },
+            carbEntries: carbEntries,
             basal: basal,
             sensitivity: sensitivity,
             carbRatio: carbRatio,

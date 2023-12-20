@@ -419,10 +419,10 @@ extension Collection where Element: CarbEntry {
 // MARK: - Dyanamic absorption overrides
 extension Collection {
 
-    public func dynamicCarbsOnBoard<T>(
+    public func dynamicCarbsOnBoard(
         at date: Date,
         absorptionModel: CarbAbsorptionComputable
-    ) -> Double where Element == CarbStatus<T> {
+    ) -> Double where Element == CarbStatus {
         reduce(0.0) { (value, entry) -> Double in
             return value + entry.dynamicCarbsOnBoard(
                 at: date,
@@ -434,11 +434,11 @@ extension Collection {
         }
     }
 
-    public func dynamicCarbsOnBoard<T>(
+    public func dynamicCarbsOnBoard(
         from start: Date? = nil,
         to end: Date? = nil,
         absorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption()
-    ) -> [CarbValue] where Element == CarbStatus<T> {
+    ) -> [CarbValue] where Element == CarbStatus {
 
         guard let (startDate, endDate) = simulationDateRange(
             from: start,
@@ -471,7 +471,7 @@ extension Collection {
         return values
     }
 
-    public func dynamicGlucoseEffects<T>(
+    public func dynamicGlucoseEffects(
         from start: Date? = nil,
         to end: Date? = nil,
         carbRatios: [AbsoluteScheduleValue<Double>],
@@ -480,7 +480,7 @@ extension Collection {
         absorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption(),
         delay: TimeInterval = CarbMath.defaultEffectDelay,
         delta: TimeInterval = GlucoseMath.defaultDelta
-    ) -> [GlucoseEffect] where Element == CarbStatus<T> {
+    ) -> [GlucoseEffect] where Element == CarbStatus {
         guard let (startDate, endDate) = simulationDateRange(from: start, to: end, defaultAbsorptionTime: defaultAbsorptionTime, delay: delay, delta: delta) else {
             return []
         }
@@ -513,7 +513,7 @@ extension Collection {
     }
 
     /// The quantity of carbs expected to still absorb at the last date of absorption
-    public func getClampedCarbsOnBoard<T>() -> CarbValue? where Element == CarbStatus<T> {
+    public func getClampedCarbsOnBoard() -> CarbValue? where Element == CarbStatus {
         guard let firstAbsorption = first?.absorption else {
             return nil
         }
@@ -756,7 +756,7 @@ fileprivate class CarbStatusBuilder<T: CarbEntry> {
     }
 
     /// The resulting CarbStatus value
-    var result: CarbStatus<T> {
+    var result: CarbStatus {
         let absorption = AbsorbedCarbValue(
             observed: HKQuantity(unit: carbUnit, doubleValue: observedGrams),
             clamped: HKQuantity(unit: carbUnit, doubleValue: clampedGrams),
@@ -768,9 +768,11 @@ fileprivate class CarbStatusBuilder<T: CarbEntry> {
         )
 
         return CarbStatus(
-            entry: entry,
             absorption: absorption,
-            observedTimeline: clampedTimeline
+            observedTimeline: clampedTimeline,
+            quantity: entry.quantity,
+            startDate: entry.startDate,
+            originalAbsorptionTime: entry.absorptionTime
         )
     }
 
@@ -815,7 +817,7 @@ extension Collection where Element: CarbEntry {
         absorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption(),
         adaptiveAbsorptionRateEnabled: Bool = false,
         adaptiveRateStandbyIntervalFraction: Double = 0.2
-    ) -> [CarbStatus<Element>] {
+    ) -> [CarbStatus] {
         guard count > 0 else {
             // TODO: Apply unmatched effects to meal prediction
             return []
