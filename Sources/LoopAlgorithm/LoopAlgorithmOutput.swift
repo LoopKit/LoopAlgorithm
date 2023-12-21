@@ -12,7 +12,7 @@ public struct LoopAlgorithmOutput {
     public var recommendationResult: Result<LoopAlgorithmDoseRecommendation,Error>
     public var predictedGlucose: [PredictedGlucoseValue]
     public var effects: LoopAlgorithmEffects
-    public var dosesRelativeToBasal: [DoseEntry]
+    public var dosesRelativeToBasal: [BasalRelativeDose]
     public var activeInsulin: Double?
     public var activeCarbs: Double?
 
@@ -20,7 +20,7 @@ public struct LoopAlgorithmOutput {
         recommendationResult: Result<LoopAlgorithmDoseRecommendation, Error>,
         predictedGlucose: [PredictedGlucoseValue],
         effects: LoopAlgorithmEffects,
-        dosesRelativeToBasal: [DoseEntry],
+        dosesRelativeToBasal: [BasalRelativeDose],
         activeInsulin: Double? = nil,
         activeCarbs: Double? = nil
     ) {

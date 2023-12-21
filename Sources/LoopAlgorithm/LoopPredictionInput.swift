@@ -9,12 +9,12 @@
 import Foundation
 import HealthKit
 
-public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampleValue> {
+public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose> {
     // Algorithm input time range: t-10h to t
     public var glucoseHistory: [GlucoseType]
 
     // Algorithm input time range: t-16h to t
-    public var doses: [DoseEntry]
+    public var doses: [InsulinDoseType]
 
     // Algorithm input time range: t-10h to t
     public var carbEntries: [CarbType]
@@ -38,7 +38,7 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
 
     public init(
         glucoseHistory: [GlucoseType],
-        doses: [DoseEntry],
+        doses: [InsulinDoseType],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
         sensitivity: [AbsoluteScheduleValue<HKQuantity>],
@@ -61,12 +61,12 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
 }
 
 
-extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, GlucoseType == FixtureGlucoseSample {
+extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, GlucoseType == FixtureGlucoseSample, InsulinDoseType == FixtureInsulinDose {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
         self.glucoseHistory = try container.decode([FixtureGlucoseSample].self, forKey: .glucoseHistory)
-        self.doses = try container.decode([DoseEntry].self, forKey: .doses)
+        self.doses = try container.decode([FixtureInsulinDose].self, forKey: .doses)
         self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
         let sensitivityMgdl = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
@@ -117,8 +117,8 @@ extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, Gluco
 
 extension LoopPredictionInput {
 
-    var simplifiedForFixture: LoopPredictionInput<FixtureCarbEntry, FixtureGlucoseSample> {
-        return LoopPredictionInput<FixtureCarbEntry, FixtureGlucoseSample>(
+    var simplifiedForFixture: LoopPredictionInput<FixtureCarbEntry, FixtureGlucoseSample, FixtureInsulinDose> {
+        return LoopPredictionInput<FixtureCarbEntry, FixtureGlucoseSample, FixtureInsulinDose>(
             glucoseHistory: glucoseHistory.map {
                 return FixtureGlucoseSample(
                     startDate: $0.startDate,
@@ -126,7 +126,13 @@ extension LoopPredictionInput {
                     isDisplayOnly: $0.isDisplayOnly)
             },
             doses: doses.map {
-                DoseEntry(type: $0.type, startDate: $0.startDate, endDate: $0.endDate, value: $0.value, unit: $0.unit)
+                FixtureInsulinDose(
+                    type: $0.type == .bolus ? .bolus : .tempBasal,
+                    startDate: $0.startDate,
+                    endDate: $0.endDate,
+                    volume: $0.volume,
+                    insulinType: $0.insulinType
+                )
             },
             carbEntries: carbEntries.map {
                 return FixtureCarbEntry(

@@ -134,7 +134,7 @@ extension TempBasalRecommendation {
     public func ifNecessary(
         at date: Date,
         neutralBasalRate: Double,
-        lastTempBasal: DoseEntry?,
+        lastTempBasal: (any InsulinDose)?,
         continuationInterval: TimeInterval,
         neutralBasalRateMatchesPump: Bool
     ) -> TempBasalRecommendation? {
