@@ -65,7 +65,7 @@ public struct AlgorithmEffectsOptions: OptionSet {
 public struct LoopPrediction {
     public var glucose: [PredictedGlucoseValue]
     public var effects: LoopAlgorithmEffects
-    public var dosesRelativeToBasal: [DoseEntry]
+    public var dosesRelativeToBasal: [BasalRelativeDose]
     public var activeInsulin: Double?
     public var activeCarbs: Double?
 }
@@ -100,10 +100,10 @@ public struct LoopAlgorithm {
     ///   - carbAbsorptionModel: A model conforming to CarbAbsorptionComputable that is used for computing carb absorption over time.
     /// - Returns: A LoopPrediction struct containing the predicted glucose and the computed intermediate effects used to make the prediction
 
-    public static func generatePrediction<CarbType, GlucoseType>(
+    public static func generatePrediction<CarbType, GlucoseType, InsulinDoseType>(
         start: Date,
         glucoseHistory: [GlucoseType],
-        doses: [DoseEntry],
+        doses: [InsulinDoseType],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
         sensitivity: [AbsoluteScheduleValue<HKQuantity>],
@@ -112,7 +112,7 @@ public struct LoopAlgorithm {
         useIntegralRetrospectiveCorrection: Bool = false,
         includingPositiveVelocityAndRC: Bool = true,
         carbAbsorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption()
-    ) -> LoopPrediction where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue {
+    ) -> LoopPrediction where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose {
 
         var prediction: [PredictedGlucoseValue] = []
         var insulinEffects: [GlucoseEffect] = []
@@ -125,7 +125,7 @@ public struct LoopAlgorithm {
         var activeInsulin: Double?
         var activeCarbs: Double?
         var carbStatus: [CarbStatus] = []
-        var dosesRelativeToBasal: [DoseEntry] = []
+        var dosesRelativeToBasal: [BasalRelativeDose] = []
 
         // Ensure basal history covers doses
         if let doseStart = doses.first?.startDate, !basal.isEmpty, basal.first!.startDate <= doseStart {
@@ -248,7 +248,7 @@ public struct LoopAlgorithm {
     }
 
     // Helper to generate prediction with LoopPredictionInput struct
-    public static func generatePrediction<CarbType, GlucoseType>(input: LoopPredictionInput<CarbType, GlucoseType>) -> LoopPrediction {
+    public static func generatePrediction<CarbType, GlucoseType, InsulinDoseType>(input: LoopPredictionInput<CarbType, GlucoseType, InsulinDoseType>) -> LoopPrediction {
 
         return generatePrediction(
             start: input.glucoseHistory.last?.startDate ?? Date(),
@@ -374,7 +374,7 @@ public struct LoopAlgorithm {
         return bolus
     }
 
-    public static func recommendDose<CarbType, GlucoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType>) throws -> LoopAlgorithmDoseRecommendation {
+    public static func recommendDose<CarbType, GlucoseType, InsulinDoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType, InsulinDoseType>) throws -> LoopAlgorithmDoseRecommendation {
         let output = run(input: input)
         switch output.recommendationResult {
         case .success(let recommendation):
@@ -384,16 +384,16 @@ public struct LoopAlgorithm {
         }
     }
 
-    public static func run<CarbType, GlucoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType>, effectOptions: AlgorithmEffectsOptions = .all) -> LoopAlgorithmOutput {
+    public static func run<CarbType, GlucoseType, InsulinDoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType, InsulinDoseType>, effectOptions: AlgorithmEffectsOptions = .all) -> LoopAlgorithmOutput {
 
         // If we're running for automated dosing, we calculate a dose assuming that the current temp basal will be canceled
-        let inputDoses: [DoseEntry]
 
-        if input.recommendationType.automated {
-            inputDoses = input.doses.trimmed(to: input.predictionStart, onlyTrimTempBasals: true)
-        } else {
-            inputDoses = input.doses
-        }
+        // TODO: we can change the effects to not use future delivery, instead of having to modify the array
+//        if input.recommendationType.automated {
+//            inputDoses = input.doses.trimmed(to: input.predictionStart, onlyTrimTempBasals: true)
+//        } else {
+//            inputDoses = input.doses
+//        }
 
         // `generatePrediction` does a best-try to generate a prediction and associated effects.
         // Outputs may be incomplete, if there are issues with the provided data.
@@ -403,7 +403,7 @@ public struct LoopAlgorithm {
         let prediction = generatePrediction(
             start: input.predictionStart,
             glucoseHistory: input.glucoseHistory,
-            doses: inputDoses,
+            doses: input.doses,
             carbEntries: input.carbEntries,
             basal: input.basal,
             sensitivity: input.sensitivity,

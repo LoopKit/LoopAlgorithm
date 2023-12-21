@@ -16,10 +16,10 @@ public enum AlgorithmInputDecodingError: Error {
     case doseVolumeMissing
 }
 
-public struct LoopAlgorithmInput<CarbType: CarbEntry, GlucoseType: GlucoseSampleValue> {
+public struct LoopAlgorithmInput<CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose> {
     public var predictionStart: Date
     public var glucoseHistory: [GlucoseType]
-    public var doses: [DoseEntry]
+    public var doses: [InsulinDoseType]
     public var carbEntries: [CarbType]
     public var basal: [AbsoluteScheduleValue<Double>]
     public var sensitivity: [AbsoluteScheduleValue<HKQuantity>]
@@ -42,30 +42,16 @@ public struct LoopAlgorithmInput<CarbType: CarbEntry, GlucoseType: GlucoseSample
         var upperBound: Double
     }
 
-    struct Dose: Codable {
-        var startDate: Date
-        var endDate: Date?
-        var volume: Double?
-        var type: DoseType
-        var insulinType: String?
-    }
-
     struct Glucose {
         var value: Double
         var isCalibration: Bool
         var date: Date
     }
 
-    public struct CarbEntry: Codable {
-        var grams: Double
-        var absorptionTime: TimeInterval?
-        var date: Date
-    }
-
     public init(
         predictionStart: Date,
         glucoseHistory: [GlucoseType],
-        doses: [DoseEntry],
+        doses: [InsulinDoseType],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
         sensitivity: [AbsoluteScheduleValue<HKQuantity>],
@@ -128,7 +114,7 @@ extension LoopAlgorithmInput.Glucose: Codable {
 }
 
 
-extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry, GlucoseType == FixtureGlucoseSample {
+extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry, GlucoseType == FixtureGlucoseSample, InsulinDoseType == FixtureInsulinDose {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
 
@@ -141,33 +127,8 @@ extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry, Glucos
                 isDisplayOnly: sample.isCalibration
             )
         }
-        let doses = try container.decode([Dose].self, forKey: .doses)
-        self.doses = try doses.map({ dose in
-            let value: Double
-            let unit: DoseUnit
-            switch dose.type {
-            case .basal, .tempBasal, .bolus:
-                guard let decodedVolume = dose.volume else {
-                    throw AlgorithmInputDecodingError.doseVolumeMissing
-                }
-                value = decodedVolume
-                unit = .units
-            default:
-                value = 0
-                unit = .units
-                break
-            }
-            let insulinType: InsulinType?
-            if let insulinTypeIdentifier = dose.insulinType {
-                guard let decodedInsulinType = InsulinType(with: insulinTypeIdentifier) else {
-                    throw AlgorithmInputDecodingError.invalidInsulinType
-                }
-                insulinType = decodedInsulinType
-            } else {
-                insulinType = nil
-            }
-            return DoseEntry(type: dose.type, startDate: dose.startDate, endDate: dose.endDate, value: value, unit: unit, insulinType: insulinType)
-        })
+
+        self.doses = try container.decode([FixtureInsulinDose].self, forKey: .doses)
         self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
         let sensitivityMgdl = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
@@ -219,26 +180,7 @@ extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry, Glucos
                 date: sample.startDate)
         }
         try container.encode(glucose, forKey: .glucoseHistory)
-        let doses = doses.map { dose in
-            switch dose.type {
-            case .basal, .tempBasal, .bolus:
-                return Dose(
-                    startDate: dose.startDate,
-                    endDate: dose.endDate,
-                    volume: dose.deliveredUnits ?? dose.programmedUnits,
-                    type: dose.type,
-                    insulinType: dose.insulinType?.identifierForAlgorithmInput)
-            default:
-                return Dose(startDate: dose.startDate, endDate: dose.endDate, type: dose.type, insulinType: dose.insulinType?.identifierForAlgorithmInput)
-            }
-        }
         try container.encode(doses, forKey: .doses)
-        let carbEntries = carbEntries.map { entry in
-            CarbEntry(
-                grams: entry.quantity.doubleValue(for: .gram()),
-                absorptionTime: entry.absorptionTime,
-                date: entry.startDate)
-        }
         try container.encode(carbEntries, forKey: .carbEntries)
         try container.encode(basal, forKey: .basal)
         let sensitivityMgdl = sensitivity.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: $0.value.doubleValue(for: .milligramsPerDeciliter)) }
@@ -326,8 +268,8 @@ extension InsulinType {
 
 extension LoopAlgorithmInput {
 
-    var simplifiedForFixture: LoopAlgorithmInput<FixtureCarbEntry, FixtureGlucoseSample> {
-        return LoopAlgorithmInput<FixtureCarbEntry, FixtureGlucoseSample>(
+    var simplifiedForFixture: LoopAlgorithmInput<FixtureCarbEntry, FixtureGlucoseSample, FixtureInsulinDose> {
+        return LoopAlgorithmInput<FixtureCarbEntry, FixtureGlucoseSample, FixtureInsulinDose>(
             predictionStart: predictionStart,
             glucoseHistory: glucoseHistory.map {
                 FixtureGlucoseSample(
@@ -337,7 +279,15 @@ extension LoopAlgorithmInput {
                     isDisplayOnly: $0.isDisplayOnly
                 )
             },
-            doses: doses,
+            doses: doses.map({
+                FixtureInsulinDose(
+                    type: $0.type,
+                    startDate: $0.startDate,
+                    endDate: $0.endDate,
+                    volume: $0.volume,
+                    insulinType: $0.insulinType
+                )
+            }),
             carbEntries: carbEntries.map {
                 FixtureCarbEntry(
                     absorptionTime: $0.absorptionTime,
