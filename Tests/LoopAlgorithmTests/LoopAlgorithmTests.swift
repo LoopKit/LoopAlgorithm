@@ -44,4 +44,83 @@ final class LoopAlgorithmTests: XCTestCase {
 
         XCTAssertEqual(output.recommendation, recommendation)
     }
+
+    func testAlgorithmShouldBeDateIndependent() throws {
+        let now = Date()
+        var a = LoopAlgorithmInputFixture.mock(for: now)
+        var b = LoopAlgorithmInputFixture.mock(for: now.addingTimeInterval(.minutes(-2.5)))
+
+        a.carbEntries.append(
+            FixtureCarbEntry(
+                startDate: a.predictionStart.addingTimeInterval(-.minutes(30)),
+                quantity: .carbs(value: 10)
+            )
+        )
+
+        b.carbEntries.append(
+            FixtureCarbEntry(
+                startDate: b.predictionStart.addingTimeInterval(-.minutes(30)),
+                quantity: .carbs(value: 10)
+            )
+        )
+
+
+        let outputA = LoopAlgorithm.run(input: a)
+        let outputB = LoopAlgorithm.run(input: b)
+
+        XCTAssertEqual(outputA.activeCarbs, outputB.activeCarbs)
+        XCTAssertEqual(outputA.activeInsulin, outputB.activeInsulin)
+
+        XCTAssertEqual(outputA.effects.carbs.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 190.0)
+        XCTAssertEqual(outputB.effects.carbs.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 190.0)
+
+        XCTAssertEqual(outputA.effects.insulin.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
+        XCTAssertEqual(outputB.effects.insulin.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
+
+        XCTAssertEqual(outputA.effects.momentum.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
+        XCTAssertEqual(outputB.effects.momentum.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
+
+        // TODO:
+//        XCTAssertEqual(outputA.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0)
+//        XCTAssertEqual(outputB.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0)
+//
+//        XCTAssertEqual(outputA.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 283.7, accuracy: 0.01)
+//        XCTAssertEqual(outputB.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 283.7, accuracy: 0.01)
+    }
+
+
+    func testObservedProgressForCarbStatus() throws {
+        let date = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
+        var input = LoopAlgorithmInputFixture.mock(for: date)
+
+        let now = input.predictionStart
+
+        // Add carbs (20g should be 2U at 10g/U)
+        input.carbEntries.append(
+            FixtureCarbEntry(
+                startDate: now.addingTimeInterval(-.minutes(30)),
+                quantity: .carbs(value: 20)
+            )
+        )
+
+        // Rising BG from carb absorption
+        input.glucoseHistory = [
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-18)), quantity: .glucose(value: 105)),
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-13)), quantity: .glucose(value: 115)),
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-8)), quantity: .glucose(value: 120)),
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-3)), quantity: .glucose(value: 145)),
+        ]
+
+        let output = LoopAlgorithm.run(input: input)
+
+        let carbStatus = output.effects.carbStatus.first!
+        XCTAssertEqual(carbStatus.absorption!.observedProgress.doubleValue(for: .percent()), 0.11, accuracy: 0.01)
+
+        XCTAssert(carbStatus.absorption!.isActive)
+
+        let basalAdjustment = output.recommendation!.automatic!.basalAdjustment
+
+        XCTAssertEqual(basalAdjustment!.unitsPerHour, 5.06, accuracy: 0.01)
+    }
+
 }

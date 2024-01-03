@@ -59,17 +59,6 @@ public extension Sequence where Element: TimelineValue {
         return (before, after)
     }
 
-    /// Returns all elements inmmediately adjacent to the specified date
-    ///
-    /// Use Sequence.elementsAdjacent(to:) if specific before/after references are necessary
-    ///
-    /// - Parameter date: The date to use in the search
-    /// - Returns: The closest elements, if found
-    func allElementsAdjacent(to date: Date) -> [Iterator.Element] {
-        let (before, after) = elementsAdjacent(to: date)
-        return [before, after].compactMap({ $0 })
-    }
-
     /**
      Returns an array of elements filtered by the specified date range.
 
@@ -108,23 +97,5 @@ public extension Sequence where Element: TimelineValue {
      */
     func filterDateInterval(interval: DateInterval) -> [Iterator.Element] {
         return filterDateRange(interval.start, interval.end)
-    }
-
-}
-
-public extension Sequence where Element: SampleValue {
-    func average(unit: HKUnit) -> HKQuantity? {
-        let (sum, count) = reduce(into: (sum: 0.0, count: 0)) { result, element in
-            result.0 += element.quantity.doubleValue(for: unit)
-            result.1 += 1
-        }
-
-        guard count > 0 else {
-            return nil
-        }
-
-        let average = sum / Double(count)
-
-        return HKQuantity(unit: unit, doubleValue: average)
     }
 }

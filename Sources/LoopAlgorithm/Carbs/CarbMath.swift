@@ -30,20 +30,6 @@ public enum CarbAbsorptionModel {
     }
 }
 
-public struct CarbModelSettings {
-    var absorptionModel: CarbAbsorptionComputable
-    var initialAbsorptionTimeOverrun: Double
-    var adaptiveAbsorptionRateEnabled: Bool
-    var adaptiveRateStandbyIntervalFraction: Double
-
-    init(absorptionModel: CarbAbsorptionComputable, initialAbsorptionTimeOverrun: Double, adaptiveAbsorptionRateEnabled: Bool, adaptiveRateStandbyIntervalFraction: Double = 0.2) {
-        self.absorptionModel = absorptionModel
-        self.initialAbsorptionTimeOverrun = initialAbsorptionTimeOverrun
-        self.adaptiveAbsorptionRateEnabled = adaptiveAbsorptionRateEnabled
-        self.adaptiveRateStandbyIntervalFraction = adaptiveRateStandbyIntervalFraction
-    }
-}
-
 public protocol CarbAbsorptionComputable {
     /// Returns the percentage of total carbohydrates absorbed as blood glucose at a specified interval after eating.
     ///
@@ -118,49 +104,6 @@ extension CarbAbsorptionComputable {
     }
 
 }
-
-
-// MARK: - Parabolic absorption as described by Scheiner
-// This is the integral approximation of the Scheiner GI curve found in Think Like a Pancreas, Fig 7-8, which first appeared in [GlucoDyn](https://github.com/kenstack/GlucoDyn)
-struct ParabolicAbsorption: CarbAbsorptionComputable {
-    func percentAbsorptionAtPercentTime(_ percentTime: Double) -> Double {
-        switch percentTime {
-        case let t where t <= 0.0:
-            return 0.0
-        case let t where t <= 0.5:
-            return 2.0 * pow(t, 2)
-        case let t where t < 1.0:
-            return -1.0 + 2.0 * t * (2.0 - t)
-        default:
-            return 1.0
-        }
-    }
-
-    func percentTimeAtPercentAbsorption(_ percentAbsorption: Double) -> Double {
-        switch percentAbsorption {
-        case let a where a <= 0:
-            return 0.0
-        case let a where a <= 0.5:
-            return sqrt(0.5 * a)
-        case let a where a < 1.0:
-            return 1.0 - sqrt(0.5 * (1.0 - a))
-        default:
-            return 1.0
-        }
-    }
-
-    func percentRateAtPercentTime(_ percentTime: Double) -> Double {
-        switch percentTime {
-        case let t where t > 0 && t <= 0.5:
-            return 4.0 * t
-        case let t where t > 0.5 && t < 1.0:
-            return 4.0 - 4.0 * t
-        default:
-            return 0.0
-        }
-    }
-}
-
 
 // MARK: - Linear absorption as a factor of reported duration
 struct LinearAbsorption: CarbAbsorptionComputable {
@@ -300,12 +243,6 @@ extension CarbEntry {
     ) -> Double {
         return insulinSensitivity.doubleValue(for: HKUnit.milligramsPerDeciliter) / carbRatio.doubleValue(for: .gram()) * absorbedCarbs(at: date, absorptionTime: absorptionTime ?? defaultAbsorptionTime, delay: delay, absorptionModel: absorptionModel)
     }
-
-    fileprivate func estimatedAbsorptionTime(forAbsorbedCarbs carbs: Double, at date: Date, absorptionModel: CarbAbsorptionComputable) -> TimeInterval {
-        let time = date.timeIntervalSince(startDate)
-
-        return max(time, absorptionModel.absorptionTime(forPercentAbsorption: carbs / quantity.doubleValue(for: .gram()), atTime: time))
-    }
 }
 
 extension Collection where Element: CarbEntry {
@@ -392,26 +329,6 @@ extension Collection where Element: CarbEntry {
         } while date <= endDate
 
         return values
-    }
-
-    var totalCarbs: CarbValue? {
-        guard count > 0 else {
-            return nil
-        }
-
-        let unit = HKUnit.gram()
-        var startDate = Date.distantFuture
-        var totalGrams: Double = 0
-
-        for entry in self {
-            totalGrams += entry.quantity.doubleValue(for: unit)
-
-            if entry.startDate < startDate {
-                startDate = entry.startDate
-            }
-        }
-
-        return CarbValue(startDate: startDate, value: totalGrams)
     }
 }
 
@@ -511,28 +428,6 @@ extension Collection {
 
         return values
     }
-
-    /// The quantity of carbs expected to still absorb at the last date of absorption
-    public func getClampedCarbsOnBoard() -> CarbValue? where Element == CarbStatus {
-        guard let firstAbsorption = first?.absorption else {
-            return nil
-        }
-
-        let gram = HKUnit.gram()
-        var maxObservedEndDate = firstAbsorption.observedDate.end
-        var remainingTotalGrams: Double = 0
-
-        for entry in self {
-            guard let absorption = entry.absorption else {
-                continue
-            }
-
-            maxObservedEndDate = Swift.max(maxObservedEndDate, absorption.observedDate.end)
-            remainingTotalGrams += absorption.remaining.doubleValue(for: gram)
-        }
-
-        return CarbValue(startDate: maxObservedEndDate, value: remainingTotalGrams)
-    }
 }
 
 
@@ -589,11 +484,6 @@ fileprivate class CarbStatusBuilder<T: CarbEntry> {
 
     /// The last date we have effects observed, or "now" in real-time analysis.
     private let lastEffectDate: Date
-
-    /// The minimum-required carb absorption rate for this entry, in g/s
-    var minAbsorptionRate: Double {
-        return entryGrams / maxAbsorptionTime
-    }
 
     /// The minimum amount of carbs we assume must have absorbed at the last observation date
     private var minPredictedGrams: Double {

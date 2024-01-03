@@ -110,56 +110,6 @@ extension InsulinCorrection {
     }
 }
 
-
-extension TempBasalRecommendation {
-    /// Equates the recommended rate with another rate
-    ///
-    /// - Parameter unitsPerHour: The rate to compare
-    /// - Returns: Whether the rates are equal within Double precision
-    private func matchesRate(_ unitsPerHour: Double) -> Bool {
-        return abs(self.unitsPerHour - unitsPerHour) < .ulpOfOne
-    }
-
-    /// Determines whether the recommendation is necessary given the current state of the pump
-    ///
-    /// - Parameters:
-    ///   - date: The date the recommendation would be delivered
-    ///   - scheduledBasalRate: The scheduled basal rate at `date`
-    ///   - lastTempBasal: The previously set temp basal
-    ///   - continuationInterval: The duration of time before an ongoing temp basal should be continued with a new command
-    ///   - scheduledBasalRateMatchesPump: A flag describing whether `scheduledBasalRate` matches the scheduled basal rate of the pump.
-    ///                                    If `false` and the recommendation matches `scheduledBasalRate`, the temp will be recommended
-    ///                                    at the scheduled basal rate rather than recommending no temp.
-    /// - Returns: A temp basal recommendation
-    public func ifNecessary(
-        at date: Date,
-        neutralBasalRate: Double,
-        lastTempBasal: (any InsulinDose)?,
-        continuationInterval: TimeInterval,
-        neutralBasalRateMatchesPump: Bool
-    ) -> TempBasalRecommendation? {
-        // Adjust behavior for the currently active temp basal
-        if let lastTempBasal = lastTempBasal,
-            lastTempBasal.type == .tempBasal,
-            lastTempBasal.endDate > date
-        {
-            /// If the last temp basal has the same rate, and has more than `continuationInterval` of time remaining, don't set a new temp
-            if matchesRate(lastTempBasal.unitsPerHour),
-                lastTempBasal.endDate.timeIntervalSince(date) > continuationInterval {
-                return nil
-            } else if matchesRate(neutralBasalRate), neutralBasalRateMatchesPump {
-                // If our new temp matches the scheduled rate of the pump, cancel the current temp
-                return .cancel
-            }
-        } else if matchesRate(neutralBasalRate), neutralBasalRateMatchesPump {
-            // If we recommend the in-progress scheduled basal rate of the pump, do nothing
-            return nil
-        }
-
-        return self
-    }
-}
-
 /// Computes a total insulin amount necessary to correct a glucose differential at a given sensitivity
 ///
 /// - Parameters:
