@@ -203,7 +203,7 @@ public struct PiecewiseLinearAbsorption: CarbAbsorptionComputable {
 
 extension CarbEntry {
 
-    func carbsOnBoard(at date: Date, defaultAbsorptionTime: TimeInterval, delay: TimeInterval, absorptionModel: CarbAbsorptionComputable) -> Double {
+    public func carbsOnBoard(at date: Date, defaultAbsorptionTime: TimeInterval, delay: TimeInterval, absorptionModel: CarbAbsorptionComputable) -> Double {
         let time = date.timeIntervalSince(startDate)
         let value: Double
 
@@ -217,7 +217,7 @@ extension CarbEntry {
     }
 
     // g
-    func absorbedCarbs(
+    public func absorbedCarbs(
         at date: Date,
         absorptionTime: TimeInterval,
         delay: TimeInterval,

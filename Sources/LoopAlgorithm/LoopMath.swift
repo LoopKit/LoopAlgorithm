@@ -16,7 +16,7 @@ public enum LoopMath {
     public static let retrospectiveCorrectionEffectDuration = TimeInterval(hours: 1)
 
 
-    static func simulationDateRangeForSamples<T: Collection>(
+    public static func simulationDateRangeForSamples<T: Collection>(
         _ samples: T,
         from start: Date? = nil,
         to end: Date? = nil,
