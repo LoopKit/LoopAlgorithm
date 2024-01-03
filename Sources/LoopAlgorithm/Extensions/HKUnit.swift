@@ -22,10 +22,6 @@ extension HKUnit {
         return HKUnit.milligramsPerDeciliter.unitDivided(by: .minute())
     }()
 
-    static let millimolesPerLiterPerMinute: HKUnit = {
-        return HKUnit.millimolesPerLiter.unitDivided(by: .minute())
-    }()
-
     static let internationalUnitsPerHour: HKUnit = {
         return HKUnit.internationalUnit().unitDivided(by: .hour())
     }()
@@ -33,21 +29,5 @@ extension HKUnit {
     static let gramsPerUnit: HKUnit = {
         return HKUnit.gram().unitDivided(by: .internationalUnit())
     }()
-
-    var foundationUnit: Unit? {
-        if self == HKUnit.milligramsPerDeciliter {
-            return UnitConcentrationMass.milligramsPerDeciliter
-        }
-
-        if self == HKUnit.millimolesPerLiter {
-            return UnitConcentrationMass.millimolesPerLiter(withGramsPerMole: HKUnitMolarMassBloodGlucose)
-        }
-
-        if self == HKUnit.gram() {
-            return UnitMass.grams
-        }
-
-        return nil
-    }
 }
 

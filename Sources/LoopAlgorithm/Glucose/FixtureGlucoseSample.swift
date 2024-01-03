@@ -1,5 +1,5 @@
 //
-//  StoredGlucoseSample.swift
+//  FixtureGlucoseSample.swift
 //  LoopKit
 //
 //  Copyright © 2018 LoopKit Authors. All rights reserved.

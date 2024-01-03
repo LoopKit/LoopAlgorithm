@@ -83,8 +83,10 @@ public struct LoopAlgorithm {
     public static let insulinModelProvider = PresetInsulinModelProvider(defaultRapidActingModel: nil)
 
     /// Generates a forecast predicting glucose.
+    /// Outputs may be incomplete, if there are issues with the provided data, but as many intermediate derived fields as can be computed, will be computed.
     ///
     /// Returns nil if the normal scheduled basal, or active temporary basal, is sufficient.
+    /// 
     ///
     /// - Parameters:
     ///   - start: The starting time of the glucose prediction.
@@ -128,17 +130,42 @@ public struct LoopAlgorithm {
         var dosesRelativeToBasal: [BasalRelativeDose] = []
 
         // Ensure basal history covers doses
-        if let doseStart = doses.first?.startDate, !basal.isEmpty, basal.first!.startDate <= doseStart {
+        let doseStart = doses.first?.startDate ?? start
+        if !basal.isEmpty, basal.first!.startDate <= doseStart {
             // Overlay basal history on basal doses, splitting doses to get amount delivered relative to basal
             dosesRelativeToBasal = doses.annotated(with: basal)
+
+            activeInsulin = dosesRelativeToBasal.insulinOnBoard(insulinModelProvider: insulinModelProvider, at: start)
+
+            var minDate = start
+            var maxDate = start
+
+            for dose in dosesRelativeToBasal {
+                if dose.startDate < minDate {
+                    minDate = dose.startDate
+                }
+
+                let doseEnd = dose.endDate.addingTimeInterval(insulinModelProvider.model(for: dose.insulinType).effectDuration)
+
+                if doseEnd > maxDate {
+                    maxDate = doseEnd
+                }
+            }
+
+            // Extend range of insulin effects to cover glucose, if needed
+            if let glucoseStart = glucoseHistory.first?.startDate, glucoseStart < minDate {
+                minDate = glucoseStart
+            }
+
+            if let glucoseEnd = glucoseHistory.last?.endDate, glucoseEnd > maxDate {
+                maxDate = glucoseEnd
+            }
 
             insulinEffects = dosesRelativeToBasal.glucoseEffects(
                 insulinModelProvider: insulinModelProvider,
                 insulinSensitivityHistory: sensitivity,
-                from: start.addingTimeInterval(-CarbMath.maximumAbsorptionTimeInterval).dateFlooredToTimeInterval(GlucoseMath.defaultDelta),
-                to: nil)
-
-            activeInsulin = dosesRelativeToBasal.insulinOnBoard(insulinModelProvider: insulinModelProvider, at: start)
+                from: minDate,
+                to: maxDate)
 
             // ICE
             insulinCounteractionEffects = glucoseHistory.counteractionEffects(to: insulinEffects)
@@ -286,7 +313,6 @@ public struct LoopAlgorithm {
     // Computes a 30 minute temp basal dose to correct the given prediction
     public static func recommendTempBasal(
         for correction: InsulinCorrection,
-        at deliveryDate: Date,
         neutralBasalRate: Double,
         activeInsulin: Double,
         maxBolus: Double,
@@ -319,7 +345,6 @@ public struct LoopAlgorithm {
     // Computes a bolus or low-temp basal dose to correct the given prediction
     public static func recommendAutomaticDose(
         for correction: InsulinCorrection,
-        at deliveryDate: Date,
         applicationFactor: Double,
         neutralBasalRate: Double,
         activeInsulin: Double,
@@ -384,21 +409,7 @@ public struct LoopAlgorithm {
         }
     }
 
-    public static func run<CarbType, GlucoseType, InsulinDoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType, InsulinDoseType>, effectOptions: AlgorithmEffectsOptions = .all) -> LoopAlgorithmOutput {
-
-        // If we're running for automated dosing, we calculate a dose assuming that the current temp basal will be canceled
-
-        // TODO: we can change the effects to not use future delivery, instead of having to modify the array
-//        if input.recommendationType.automated {
-//            inputDoses = input.doses.trimmed(to: input.predictionStart, onlyTrimTempBasals: true)
-//        } else {
-//            inputDoses = input.doses
-//        }
-
-        // `generatePrediction` does a best-try to generate a prediction and associated effects.
-        // Outputs may be incomplete, if there are issues with the provided data.
-        // Assertions of data completeness/recency for dosing will be checked after.
-        // This is so we can communicate/visualize state to the user even if we can't make a dosing recommendation.
+    public static func run<CarbType, GlucoseType, InsulinDoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType, InsulinDoseType>) -> LoopAlgorithmOutput {
 
         let prediction = generatePrediction(
             start: input.predictionStart,
@@ -463,7 +474,6 @@ public struct LoopAlgorithm {
             case .automaticBolus:
                 let recommendation = recommendAutomaticDose(
                     for: correction,
-                    at: input.predictionStart,
                     applicationFactor: input.automaticBolusApplicationFactor ?? defaultBolusPartialApplicationFactor,
                     neutralBasalRate: scheduledBasalRate,
                     activeInsulin: prediction.activeInsulin!,
@@ -473,7 +483,6 @@ public struct LoopAlgorithm {
             case .tempBasal:
                 let recommendation = recommendTempBasal(
                     for: correction,
-                    at: input.predictionStart,
                     neutralBasalRate: scheduledBasalRate,
                     activeInsulin: prediction.activeInsulin!,
                     maxBolus: input.maxBolus,

@@ -17,11 +17,6 @@ public struct TempBasalRecommendation: Equatable {
         return HKQuantity(unit: .internationalUnitsPerHour, doubleValue: unitsPerHour)
     }
 
-    /// A special command which cancels any existing temp basals
-    public static var cancel: TempBasalRecommendation {
-        return self.init(unitsPerHour: 0, duration: 0)
-    }
-
     public init(unitsPerHour: Double, duration: TimeInterval) {
         self.unitsPerHour = unitsPerHour
         self.duration = duration
