@@ -9,7 +9,7 @@
 import Foundation
 
 
-public protocol InsulinModel: CustomDebugStringConvertible {
+public protocol InsulinModel {
     
     /// Returns the percentage of total insulin effect remaining at a specified interval after delivery; also known as Insulin On Board (IOB).
     /// Return value is within the range of 0-1

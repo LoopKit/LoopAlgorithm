@@ -23,6 +23,14 @@ public struct BasalRelativeDose: TimelineValue {
     var duration: TimeInterval {
         return endDate.timeIntervalSince(startDate)
     }
+
+    public init(type: BasalRelativeDoseType, startDate: Date, endDate: Date, volume: Double, insulinType: InsulinType? = nil) {
+        self.type = type
+        self.startDate = startDate
+        self.endDate = endDate
+        self.volume = volume
+        self.insulinType = insulinType
+    }
 }
 
 extension BasalRelativeDose {
