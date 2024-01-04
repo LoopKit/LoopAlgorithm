@@ -17,7 +17,7 @@ public protocol InsulinDose: TimelineValue {
 }
 
 extension InsulinDose {
-    var duration: TimeInterval {
+    public var duration: TimeInterval {
         return endDate.timeIntervalSince(startDate)
     }
 
