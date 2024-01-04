@@ -7,7 +7,7 @@
 import Foundation
 
 public struct FixtureInsulinDose: InsulinDose, Equatable {
-    public var type: InsulinDoseType
+    public var deliveryType: InsulinDeliveryType
 
     public var startDate: Date
 
@@ -21,7 +21,7 @@ public struct FixtureInsulinDose: InsulinDose, Equatable {
 extension FixtureInsulinDose: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.type = try container.decode(InsulinDoseType.self, forKey: .type)
+        self.deliveryType = try container.decode(InsulinDeliveryType.self, forKey: .type)
         self.startDate = try container.decode(Date.self, forKey: .startDate)
         self.endDate = try container.decode(Date.self, forKey: .endDate)
         self.volume = try container.decode(Double.self, forKey: .volume)
@@ -30,7 +30,7 @@ extension FixtureInsulinDose: Codable {
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(type, forKey: .type)
+        try container.encode(deliveryType, forKey: .type)
         try container.encode(startDate, forKey: .startDate)
         try container.encode(endDate, forKey: .endDate)
         try container.encode(volume, forKey: .volume)

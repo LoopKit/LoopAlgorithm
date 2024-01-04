@@ -281,7 +281,7 @@ extension LoopAlgorithmInput {
             },
             doses: doses.map({
                 FixtureInsulinDose(
-                    type: $0.type,
+                    deliveryType: $0.deliveryType,
                     startDate: $0.startDate,
                     endDate: $0.endDate,
                     volume: $0.volume,

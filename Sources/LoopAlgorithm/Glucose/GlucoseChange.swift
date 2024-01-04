@@ -12,6 +12,12 @@ public struct GlucoseChange: SampleValue, Equatable {
     public var startDate: Date
     public var endDate: Date
     public var quantity: HKQuantity
+
+    public init(startDate: Date, endDate: Date, quantity: HKQuantity) {
+        self.startDate = startDate
+        self.endDate = endDate
+        self.quantity = quantity
+    }
 }
 
 
