@@ -118,7 +118,7 @@ extension InsulinDose {
     /// - Returns: An array of annotated doses
     fileprivate func annotated(with basalHistory: [AbsoluteScheduleValue<Double>]) -> [BasalRelativeDose] {
 
-        guard type == .tempBasal else {
+        guard deliveryType == .basal else {
             preconditionFailure("basalDeliveryTotal called on dose that is not a temp basal!")
         }
 
@@ -195,7 +195,7 @@ extension Collection where Element: InsulinDose {
         var annotatedDoses: [BasalRelativeDose] = []
 
         for dose in self {
-            if dose.type == .tempBasal {
+            if dose.deliveryType == .basal {
                 let basalItems = basalHistory.filterDateRange(dose.startDate, dose.endDate)
                 annotatedDoses += dose.annotated(with: basalItems)
             } else {

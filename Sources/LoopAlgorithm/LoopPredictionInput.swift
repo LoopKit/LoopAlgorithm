@@ -127,7 +127,7 @@ extension LoopPredictionInput {
             },
             doses: doses.map {
                 FixtureInsulinDose(
-                    type: $0.type == .bolus ? .bolus : .tempBasal,
+                    deliveryType: $0.deliveryType == .bolus ? .bolus : .basal,
                     startDate: $0.startDate,
                     endDate: $0.endDate,
                     volume: $0.volume,

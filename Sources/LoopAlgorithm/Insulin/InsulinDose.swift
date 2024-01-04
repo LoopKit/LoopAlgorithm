@@ -9,7 +9,7 @@ import HealthKit
 
 
 public protocol InsulinDose: TimelineValue {
-    var type: InsulinDoseType { get }
+    var deliveryType: InsulinDeliveryType { get }
     var startDate: Date { get }
     var endDate: Date { get }
     var volume: Double { get }

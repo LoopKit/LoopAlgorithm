@@ -62,7 +62,7 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
     /// - Parameters:
     ///   - interval: The interval between readings, on average, used to determine if we have a contiguous set of values
     /// - Returns: True if the samples are continuous
-    func isContinuous(within interval: TimeInterval = TimeInterval(minutes: 5)) -> Bool {
+    public func isContinuous(within interval: TimeInterval = TimeInterval(5 * 60)) -> Bool {
         if  let first = first,
             let last = last,
             // Ensure that the entries are contiguous

@@ -51,7 +51,7 @@ extension BasalRelativeDose {
 
 extension BasalRelativeDose {
     static func fromBolus(dose: InsulinDose) -> BasalRelativeDose {
-        precondition(dose.type == .bolus, "Dose passed to fromBolus() must be a bolus.")
+        precondition(dose.deliveryType == .bolus, "Dose passed to fromBolus() must be a bolus.")
         
         return BasalRelativeDose(
             type: .bolus,
