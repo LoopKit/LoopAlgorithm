@@ -64,14 +64,14 @@ extension InsulinCorrection {
     private var bolusRecommendationNotice: BolusRecommendationNotice? {
         switch self {
         case .suspend(min: let minimum):
-            return .glucoseBelowSuspendThreshold(minGlucose: minimum)
+            return .glucoseBelowSuspendThreshold(minGlucose: SimpleGlucoseValue(minimum))
         case .inRange:
             return .predictedGlucoseInRange
         case .entirelyBelowRange(min: let min, minTarget: _, units: _):
-            return .allGlucoseBelowTarget(minGlucose: min)
+            return .allGlucoseBelowTarget(minGlucose: SimpleGlucoseValue(min))
         case .aboveRange(min: let min, correcting: _, minTarget: let target, units: let units):
             if units > 0 && min.quantity < target {
-                return .predictedGlucoseBelowTarget(minGlucose: min)
+                return .predictedGlucoseBelowTarget(minGlucose: SimpleGlucoseValue(min))
             } else {
                 return nil
             }
@@ -152,7 +152,7 @@ private func targetGlucoseValue(percentEffectDuration: Double, minValue: Double,
 
 public typealias GlucoseRangeTimeline = [AbsoluteScheduleValue<ClosedRange<HKQuantity>>]
 
-extension Collection where Element: GlucoseValue {
+extension Array where Element: GlucoseValue {
 
     /// For a collection of glucose prediction, determine the least amount of insulin delivered at
     /// `date` to correct the predicted glucose to the middle of `correctionRange` at the time of prediction.
@@ -177,23 +177,26 @@ extension Collection where Element: GlucoseValue {
         var minCorrectionUnits: Double?
         var effectedSensitivityAtMinGlucose: Double?
 
-        // Only consider predictions within the model's effect duration
-        let validDateRange = DateInterval(start: date, duration: model.effectDuration)
-
         let unit = HKUnit.milligramsPerDeciliter
 
         guard self.count > 0 else {
             preconditionFailure("Unable to compute correction for empty glucose array")
         }
 
+        // If this is not true, then this method will return very large doses. For example, it takes a *lot* of
+        // insulin to bring a predicted glucose of 200 down to range within 30 minutes, so we assert that the
+        // prediction includes values out to the end of insulin activity.
+        guard self.last!.startDate >= date.addingTimeInterval(model.effectDuration) else {
+            preconditionFailure("Minimization method requires that glucose prediction covers at least the insulin effect duration.")
+        }
+
         let suspendThresholdValue = suspendThreshold.doubleValue(for: unit)
 
         // For each prediction above target, determine the amount of insulin necessary to correct glucose based on the modeled effectiveness of the insulin at that time
         for prediction in self {
-            guard validDateRange.contains(prediction.startDate) else {
+            guard prediction.startDate >= date else {
                 continue
             }
-
 
             // If any predicted value is below the suspend threshold, return immediately
             guard prediction.quantity >= suspendThreshold else {
@@ -320,7 +323,7 @@ extension Collection where Element: GlucoseValue {
         if case .predictedGlucoseBelowTarget? = bolus.notice,
            let first = first, first.quantity < correctionRangeTimeline.closestPrior(to: first.startDate)!.value.lowerBound
         {
-            bolus.notice = .currentGlucoseBelowTarget(glucose: first)
+            bolus.notice = .currentGlucoseBelowTarget(glucose: SimpleGlucoseValue(first))
         }
 
         return bolus

@@ -250,7 +250,7 @@ public struct LoopAlgorithm {
 
             // Dosing requires prediction entries at least as long as the insulin model duration.
             // If our prediction is shorter than that, then extend it here.
-            let finalDate = latestGlucose.startDate.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration)
+            let finalDate = start.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration)
             if let last = prediction.last, last.startDate < finalDate {
                 prediction.append(PredictedGlucoseValue(startDate: finalDate, quantity: last.quantity))
             }
@@ -292,7 +292,7 @@ public struct LoopAlgorithm {
     }
 
     // Computes an amount of insulin to correct the given prediction
-    public static func insulinCorrection(
+    static func insulinCorrection(
         prediction: [PredictedGlucoseValue],
         at deliveryDate: Date,
         target: GlucoseRangeTimeline,
@@ -311,7 +311,7 @@ public struct LoopAlgorithm {
     }
 
     // Computes a 30 minute temp basal dose to correct the given prediction
-    public static func recommendTempBasal(
+    static func recommendTempBasal(
         for correction: InsulinCorrection,
         neutralBasalRate: Double,
         activeInsulin: Double,
@@ -343,7 +343,7 @@ public struct LoopAlgorithm {
     }
 
     // Computes a bolus or low-temp basal dose to correct the given prediction
-    public static func recommendAutomaticDose(
+    static func recommendAutomaticDose(
         for correction: InsulinCorrection,
         applicationFactor: Double,
         neutralBasalRate: Double,
@@ -393,7 +393,7 @@ public struct LoopAlgorithm {
         if let targetAtCurrentGlucose = target.closestPrior(to: currentGlucose.startDate),
            currentGlucose.quantity < targetAtCurrentGlucose.value.lowerBound
         {
-            bolus.notice = .currentGlucoseBelowTarget(glucose: currentGlucose)
+            bolus.notice = .currentGlucoseBelowTarget(glucose: SimpleGlucoseValue(currentGlucose))
         }
 
         return bolus

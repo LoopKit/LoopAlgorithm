@@ -9,12 +9,12 @@
 import Foundation
 import HealthKit
 
-public enum BolusRecommendationNotice {
-    case glucoseBelowSuspendThreshold(minGlucose: GlucoseValue)
-    case currentGlucoseBelowTarget(glucose: GlucoseValue)
-    case predictedGlucoseBelowTarget(minGlucose: GlucoseValue)
+public enum BolusRecommendationNotice: Equatable {
+    case glucoseBelowSuspendThreshold(minGlucose: SimpleGlucoseValue)
+    case currentGlucoseBelowTarget(glucose: SimpleGlucoseValue)
+    case predictedGlucoseBelowTarget(minGlucose: SimpleGlucoseValue)
     case predictedGlucoseInRange
-    case allGlucoseBelowTarget(minGlucose: GlucoseValue)
+    case allGlucoseBelowTarget(minGlucose: SimpleGlucoseValue)
 }
 
 extension BolusRecommendationNotice: Codable {
