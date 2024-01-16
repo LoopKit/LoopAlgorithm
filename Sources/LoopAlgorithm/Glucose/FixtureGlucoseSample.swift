@@ -15,17 +15,20 @@ public struct FixtureGlucoseSample: GlucoseSampleValue, Equatable {
     public let startDate: Date
     public let quantity: HKQuantity
     public let isDisplayOnly: Bool
+    public let wasUserEntered: Bool
 
     public init(
         provenanceIdentifier: String = Self.defaultProvenanceIdentifier,
         startDate: Date,
         quantity: HKQuantity,
-        isDisplayOnly: Bool = false
+        isDisplayOnly: Bool = false,
+        wasUserEntered: Bool = false
     ) {
         self.provenanceIdentifier = provenanceIdentifier
         self.startDate = startDate
         self.quantity = quantity
         self.isDisplayOnly = isDisplayOnly
+        self.wasUserEntered = wasUserEntered
     }
 }
 
@@ -35,11 +38,14 @@ extension FixtureGlucoseSample: Codable {
 
         let provenanceIdentifier = try container.decodeIfPresent(String.self, forKey: .provenanceIdentifier) ?? Self.defaultProvenanceIdentifier
         let isDisplayOnly = try container.decodeIfPresent(Bool.self, forKey: .isDisplayOnly) ?? false
+        let wasUserEntered = try container.decodeIfPresent(Bool.self, forKey: .wasUserEntered) ?? false
 
         self.init(provenanceIdentifier: provenanceIdentifier,
                   startDate: try container.decode(Date.self, forKey: .startDate),
                   quantity: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: try container.decode(Double.self, forKey: .quantity)),
-                  isDisplayOnly: isDisplayOnly)
+                  isDisplayOnly: isDisplayOnly,
+                  wasUserEntered: wasUserEntered
+        )
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -52,6 +58,9 @@ extension FixtureGlucoseSample: Codable {
         if isDisplayOnly {
             try container.encode(isDisplayOnly, forKey: .isDisplayOnly)
         }
+        if wasUserEntered {
+            try container.encode(wasUserEntered, forKey: .wasUserEntered)
+        }
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -59,5 +68,6 @@ extension FixtureGlucoseSample: Codable {
         case startDate
         case quantity
         case isDisplayOnly
+        case wasUserEntered
     }
 }
