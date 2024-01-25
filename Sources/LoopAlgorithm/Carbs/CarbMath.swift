@@ -281,29 +281,6 @@ extension Collection where Element: CarbEntry {
         }
     }
 
-    /// Creates groups of entries that have overlapping absorption date intervals
-    ///
-    /// - Parameters:
-    ///   - defaultAbsorptionTime: The default absorption time value, if not set on the entry
-    /// - Returns: An array of arrays representing groups of entries, in chronological order by entry startDate
-    func groupedByOverlappingAbsorptionTimes(
-        defaultAbsorptionTime: TimeInterval
-    ) -> [[Iterator.Element]] {
-        var batches: [[Iterator.Element]] = []
-
-        for entry in sorted(by: { $0.startDate < $1.startDate }) {
-            if let lastEntry = batches.last?.last,
-                lastEntry.startDate.addingTimeInterval(lastEntry.absorptionTime ?? defaultAbsorptionTime) > entry.startDate
-            {
-                batches[batches.count - 1].append(entry)
-            } else {
-                batches.append([entry])
-            }
-        }
-
-        return batches
-    }
-
     func carbsOnBoard(
         from start: Date? = nil,
         to end: Date? = nil,
