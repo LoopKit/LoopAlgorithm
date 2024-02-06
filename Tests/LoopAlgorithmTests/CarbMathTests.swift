@@ -10,6 +10,8 @@ import XCTest
 import HealthKit
 @testable import LoopAlgorithm
 
+public typealias JSONDictionary = [String: Any]
+
 class CarbMathTests: XCTestCase {
 
     public func loadFixture<T>(_ resourceName: String) -> T {

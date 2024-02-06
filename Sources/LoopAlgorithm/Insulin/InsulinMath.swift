@@ -122,10 +122,6 @@ extension InsulinDose {
             preconditionFailure("basalDeliveryTotal called on dose that is not a temp basal!")
         }
 
-        guard duration > .ulpOfOne else {
-            preconditionFailure("basalDeliveryTotal called on dose with no duration!")
-        }
-
         var doses: [BasalRelativeDose] = []
 
         for (index, basalItem) in basalHistory.enumerated() {
@@ -148,11 +144,18 @@ extension InsulinDose {
             let segmentEndDate = max(startDate, min(endDate, self.endDate))
             let segmentDuration = segmentEndDate.timeIntervalSince(segmentStartDate)
 
+            let segmentVolume: Double
+            if duration > 0 {
+                segmentVolume = volume * (segmentDuration / duration)
+            } else {
+                segmentVolume = 0
+            }
+
             let annotatedDose = BasalRelativeDose(
-                type: .tempBasal(scheduledRate: basalItem.value),
+                type: .basal(scheduledRate: basalItem.value),
                 startDate: segmentStartDate,
                 endDate: segmentEndDate,
-                volume: volume * (segmentDuration / duration)
+                volume: segmentVolume
             )
 
             doses.append(annotatedDose)
@@ -220,7 +223,7 @@ extension Collection where Element == BasalRelativeDose {
 
      - returns: A sequence of insulin amount remaining
      */
-    public func insulinOnBoard(
+    public func insulinOnBoardTimeline(
         insulinModelProvider: InsulinModelProvider = PresetInsulinModelProvider(defaultRapidActingModel: nil),
         longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
         from start: Date? = nil,

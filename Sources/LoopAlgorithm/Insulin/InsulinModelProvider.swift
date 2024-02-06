@@ -11,7 +11,7 @@ public protocol InsulinModelProvider {
 public struct PresetInsulinModelProvider: InsulinModelProvider {
     var defaultRapidActingModel: InsulinModel?
     
-    public init(defaultRapidActingModel: InsulinModel?) {
+    public init(defaultRapidActingModel: InsulinModel? = nil) {
         self.defaultRapidActingModel = defaultRapidActingModel
     }
     

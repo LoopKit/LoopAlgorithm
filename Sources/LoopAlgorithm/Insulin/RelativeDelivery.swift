@@ -8,9 +8,9 @@
 
 import Foundation
 
-public enum BasalRelativeDoseType {
+public enum BasalRelativeDoseType: Equatable {
     case bolus
-    case tempBasal(scheduledRate: Double)
+    case basal(scheduledRate: Double)
 }
 
 public struct BasalRelativeDose: TimelineValue {
@@ -20,7 +20,7 @@ public struct BasalRelativeDose: TimelineValue {
     public var volume: Double
     public var insulinType: InsulinType?
 
-    var duration: TimeInterval {
+    public var duration: TimeInterval {
         return endDate.timeIntervalSince(startDate)
     }
 
@@ -37,7 +37,7 @@ extension BasalRelativeDose {
     /// The number of units delivered, net the basal rate scheduled during that time, which can be used to compute insulin on-board and glucose effects
     public var netBasalUnits: Double {
 
-        if case .tempBasal(let scheduledRate) = type {
+        if case .basal(let scheduledRate) = type {
             guard duration.hours > 0 else {
                 return 0
             }
