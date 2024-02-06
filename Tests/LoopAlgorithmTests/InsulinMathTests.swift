@@ -43,6 +43,14 @@ class InsulinMathTests: XCTestCase {
         }
     }
 
+    func loadDoseFixtures(_ name: String) -> [FixtureInsulinDose] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures")!
+        return try! decoder.decode([FixtureInsulinDose].self, from: try! Data(contentsOf: url))
+    }
+
+
     let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
@@ -157,13 +165,91 @@ class InsulinMathTests: XCTestCase {
 
         let effects = input.glucoseEffects(insulinModelProvider: PresetInsulinModelProvider(), insulinSensitivityHistory: sensitivity)
 
+        XCTAssertEqual(output.count, effects.count)
+
+        for (expected, calculated) in zip(output, effects) {
+            XCTAssertEqual(expected.startDate, calculated.startDate)
+            XCTAssertEqual(expected.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), accuracy: 1.0, String(describing: expected.startDate))
+        }
+    }
+
+    func testGlucoseEffectFromNoDoses() {
+        let input: [BasalRelativeDose] = []
+
+        let startDate = dateFormatter.date(from: "2015-07-13T12:00:00")!
+
+        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+            AbsoluteScheduleValue(
+                startDate: startDate,
+                endDate: startDate.addingTimeInterval(InsulinMath.longestInsulinActivityDuration),
+                value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
+            )
+        ]
+
+        let effects = input.glucoseEffects(insulinModelProvider: PresetInsulinModelProvider(), insulinSensitivityHistory: sensitivity)
+
+        XCTAssertEqual(0, effects.count)
+    }
+
+    func testGlucoseEffectFromHistory() {
+        let input = loadDoseFixtures("dose_history")
+        let output = loadGlucoseEffectFixture("effect_from_history_output")
+
+        let startDate = input.last!.startDate
+        let endDate = input.first!.endDate
+
+        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+            AbsoluteScheduleValue(
+                startDate: startDate,
+                endDate: endDate.addingTimeInterval(InsulinMath.longestInsulinActivityDuration),
+                value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
+            )
+        ]
+
+        let basal = [
+            AbsoluteScheduleValue(
+                startDate: startDate,
+                endDate: dateFormatter.date(from: "2015-10-15T20:30:00")!,
+                value: 1.0),
+            AbsoluteScheduleValue(
+                startDate: dateFormatter.date(from: "2015-10-15T20:30:00")!,
+                endDate: dateFormatter.date(from: "2015-10-15T21:00:00")!,
+                value: 0.8),
+            AbsoluteScheduleValue(
+                startDate: dateFormatter.date(from: "2015-10-15T21:00:00")!,
+                endDate: dateFormatter.date(from: "2015-10-15T18:30:00")!,
+                value: 1.0),
+            AbsoluteScheduleValue(
+                startDate: dateFormatter.date(from: "2015-10-15T18:30:00")!,
+                endDate: dateFormatter.date(from: "2015-10-15T19:00:00")!,
+                value: 0.8),
+            AbsoluteScheduleValue(
+                startDate: dateFormatter.date(from: "2015-10-15T19:00:00")!,
+                endDate: endDate,
+                value: 1.0),
+        ]
+
+        let basalRelativeDoses = input.annotated(with: basal)
+
+        measure {
+            _ = basalRelativeDoses.glucoseEffects(
+                insulinModelProvider: PresetInsulinModelProvider(),
+                insulinSensitivityHistory: sensitivity
+            )
+        }
+
+        let effects = basalRelativeDoses.glucoseEffects(
+            insulinModelProvider: PresetInsulinModelProvider(),
+            insulinSensitivityHistory: sensitivity
+        )
+
         printGlucoseEffect(effects)
 
         XCTAssertEqual(output.count, effects.count)
 
         for (expected, calculated) in zip(output, effects) {
             XCTAssertEqual(expected.startDate, calculated.startDate)
-            XCTAssertEqual(expected.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), accuracy: 1.0, String(describing: expected.startDate))
+            XCTAssertEqual(expected.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), accuracy: 3.0)
         }
     }
 }

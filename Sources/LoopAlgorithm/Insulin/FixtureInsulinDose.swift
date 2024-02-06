@@ -16,6 +16,14 @@ public struct FixtureInsulinDose: InsulinDose, Equatable {
     public var volume: Double
 
     public var insulinType: InsulinType?
+
+    public init(deliveryType: InsulinDeliveryType, startDate: Date, endDate: Date, volume: Double, insulinType: InsulinType? = nil) {
+        self.deliveryType = deliveryType
+        self.startDate = startDate
+        self.endDate = endDate
+        self.volume = volume
+        self.insulinType = insulinType
+    }
 }
 
 extension FixtureInsulinDose: Codable {
@@ -34,7 +42,7 @@ extension FixtureInsulinDose: Codable {
         try container.encode(startDate, forKey: .startDate)
         try container.encode(endDate, forKey: .endDate)
         try container.encode(volume, forKey: .volume)
-        try container.encodeIfPresent(insulinType, forKey: .insulinType)
+        try container.encodeIfPresent(insulinType?.stringValue, forKey: .insulinType)
     }
 
     private enum CodingKeys: String, CodingKey {

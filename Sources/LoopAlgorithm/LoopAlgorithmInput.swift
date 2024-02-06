@@ -201,7 +201,7 @@ extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry, Glucos
         if !includePositiveVelocityAndRC {
             try container.encode(includePositiveVelocityAndRC, forKey: .includePositiveVelocityAndRC)
         }
-        try container.encode(recommendationInsulinType.identifierForAlgorithmInput, forKey: .recommendationInsulinType)
+        try container.encode(recommendationInsulinType.stringValue, forKey: .recommendationInsulinType)
         try container.encode(recommendationType.rawValue, forKey: .recommendationType)
 
     }
@@ -228,7 +228,7 @@ extension LoopAlgorithmInput: Codable where CarbType == FixtureCarbEntry, Glucos
 
 // Default Codable implementation for insulin type is int, which is not very readable.  Add more readable identifier
 extension InsulinType {
-    var identifierForAlgorithmInput: String {
+    var stringValue: String {
         switch self {
         case .afrezza:
             return "afrezza"

@@ -14,7 +14,7 @@ final class LoopAlgorithmTests: XCTestCase {
     func loadScenario(_ name: String) -> (input: LoopAlgorithmInput<FixtureCarbEntry, FixtureGlucoseSample, FixtureInsulinDose>, recommendation: LoopAlgorithmDoseRecommendation) {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        var url = Bundle.module.url(forResource: name + "_input", withExtension: "json", subdirectory: "Fixtures")!
+        var url = Bundle.module.url(forResource: name + "_scenario", withExtension: "json", subdirectory: "Fixtures")!
         let input = try! decoder.decode(LoopAlgorithmInput.self, from: try! Data(contentsOf: url))
 
         url = Bundle.module.url(forResource: name + "_recommendation", withExtension: "json", subdirectory: "Fixtures")!
