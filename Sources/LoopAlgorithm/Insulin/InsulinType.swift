@@ -1,6 +1,6 @@
 //
 //  InsulinType.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Anna Quinlan on 12/8/20.
 //  Copyright © 2020 LoopKit Authors. All rights reserved.

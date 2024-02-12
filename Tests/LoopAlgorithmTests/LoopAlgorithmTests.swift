@@ -1,6 +1,6 @@
 //
 //  LoopAlgorithmTests.swift
-//  LoopKitTests
+//  LoopAlgorithmTests
 //
 //  Created by Pete Schwamb on 10/18/23.
 //  Copyright © 2023 LoopKit Authors. All rights reserved.

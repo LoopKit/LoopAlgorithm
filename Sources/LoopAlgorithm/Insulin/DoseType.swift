@@ -1,6 +1,6 @@
 //
 //  DoseType.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Copyright © 2017 LoopKit Authors. All rights reserved.
 //

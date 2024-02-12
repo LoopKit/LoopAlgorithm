@@ -1,6 +1,6 @@
 //
 //  ClosedRange.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Michael Pangburn on 6/23/20.
 //  Copyright © 2020 LoopKit Authors. All rights reserved.

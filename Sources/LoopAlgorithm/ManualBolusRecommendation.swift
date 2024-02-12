@@ -1,6 +1,6 @@
 //
 //  ManualBolusRecommendation.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Pete Schwamb on 1/2/17.
 //  Copyright © 2017 LoopKit Authors. All rights reserved.

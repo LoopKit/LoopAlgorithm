@@ -1,6 +1,6 @@
 //
 //  GlucoseChange.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Copyright © 2018 LoopKit Authors. All rights reserved.
 //

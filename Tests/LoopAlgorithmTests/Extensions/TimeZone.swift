@@ -1,6 +1,6 @@
 //
 //  TimeZone.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Nate Racklyeft on 10/2/16.
 //  Copyright © 2016 LoopKit Authors. All rights reserved.

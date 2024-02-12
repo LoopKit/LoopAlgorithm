@@ -1,6 +1,6 @@
 //
 //  AutomaticDoseRecommendation.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Pete Schwamb on 1/16/21.
 //  Copyright © 2021 LoopKit Authors. All rights reserved.

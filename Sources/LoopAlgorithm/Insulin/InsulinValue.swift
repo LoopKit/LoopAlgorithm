@@ -1,6 +1,6 @@
 //
 //  InsulinValue.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Nathan Racklyeft on 4/3/16.
 //  Copyright © 2016 Nathan Racklyeft. All rights reserved.

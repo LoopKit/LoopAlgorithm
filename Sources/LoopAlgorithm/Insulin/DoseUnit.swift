@@ -1,6 +1,6 @@
 //
 //  DoseUnit.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Nathan Racklyeft on 3/28/16.
 //  Copyright © 2016 Nathan Racklyeft. All rights reserved.

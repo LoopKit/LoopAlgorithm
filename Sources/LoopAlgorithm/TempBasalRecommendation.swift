@@ -1,6 +1,6 @@
 //
 //  TempBasalRecommendation.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Darin Krauss on 5/21/19.
 //  Copyright © 2019 LoopKit Authors. All rights reserved.

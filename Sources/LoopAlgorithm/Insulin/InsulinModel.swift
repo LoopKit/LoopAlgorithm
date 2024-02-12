@@ -1,6 +1,6 @@
 //
 //  InsulinModel.swift
-//  LoopKit
+//  LoopAlgorithm
 //
 //  Created by Pete Schwamb on 7/26/17.
 //  Copyright © 2017 LoopKit Authors. All rights reserved.
