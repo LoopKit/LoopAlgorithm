@@ -16,10 +16,10 @@ public enum AlgorithmError: Error {
     case sensitivityTimelineIncomplete
 }
 
-public struct LoopAlgorithmEffects {
+public struct LoopAlgorithmEffects<CarbStatusType: CarbEntry> {
     public var insulin: [GlucoseEffect]
     public var carbs: [GlucoseEffect]
-    public var carbStatus: [CarbStatus]
+    public var carbStatus: [CarbStatus<CarbStatusType>]
     public var retrospectiveCorrection: [GlucoseEffect]
     public var momentum: [GlucoseEffect]
     public var insulinCounteraction: [GlucoseEffectVelocity]
@@ -29,7 +29,7 @@ public struct LoopAlgorithmEffects {
     public init(
         insulin: [GlucoseEffect],
         carbs: [GlucoseEffect],
-        carbStatus: [CarbStatus],
+        carbStatus: [CarbStatus<CarbStatusType>],
         retrospectiveCorrection: [GlucoseEffect],
         momentum: [GlucoseEffect],
         insulinCounteraction: [GlucoseEffectVelocity],
@@ -62,9 +62,9 @@ public struct AlgorithmEffectsOptions: OptionSet {
     }
 }
 
-public struct LoopPrediction {
+public struct LoopPrediction<CarbStatusType: CarbEntry> {
     public var glucose: [PredictedGlucoseValue]
-    public var effects: LoopAlgorithmEffects
+    public var effects: LoopAlgorithmEffects<CarbStatusType>
     public var dosesRelativeToBasal: [BasalRelativeDose]
     public var activeInsulin: Double?
     public var activeCarbs: Double?
@@ -114,7 +114,7 @@ public struct LoopAlgorithm {
         useIntegralRetrospectiveCorrection: Bool = false,
         includingPositiveVelocityAndRC: Bool = true,
         carbAbsorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption()
-    ) -> LoopPrediction where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose {
+    ) -> LoopPrediction<CarbType> where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose {
 
         var prediction: [PredictedGlucoseValue] = []
         var insulinEffects: [GlucoseEffect] = []
@@ -126,7 +126,7 @@ public struct LoopAlgorithm {
         var totalGlucoseCorrectionEffect: HKQuantity?
         var activeInsulin: Double?
         var activeCarbs: Double?
-        var carbStatus: [CarbStatus] = []
+        //var carbStatus: [CarbStatus] = []
         var dosesRelativeToBasal: [BasalRelativeDose] = []
 
         // Ensure basal history covers doses
@@ -174,7 +174,7 @@ public struct LoopAlgorithm {
         }
 
         // Carb Effects
-        carbStatus = carbEntries.map(
+        let carbStatus = carbEntries.map(
             to: insulinCounteractionEffects,
             carbRatio: carbRatio,
             insulinSensitivity: sensitivity
@@ -275,7 +275,7 @@ public struct LoopAlgorithm {
     }
 
     // Helper to generate prediction with LoopPredictionInput struct
-    public static func generatePrediction<CarbType, GlucoseType, InsulinDoseType>(input: LoopPredictionInput<CarbType, GlucoseType, InsulinDoseType>) -> LoopPrediction {
+    public static func generatePrediction<CarbType, GlucoseType, InsulinDoseType>(input: LoopPredictionInput<CarbType, GlucoseType, InsulinDoseType>) -> LoopPrediction<CarbType> {
 
         return generatePrediction(
             start: input.glucoseHistory.last?.startDate ?? Date(),
@@ -409,7 +409,7 @@ public struct LoopAlgorithm {
         }
     }
 
-    public static func run<CarbType, GlucoseType, InsulinDoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType, InsulinDoseType>) -> LoopAlgorithmOutput {
+    public static func run<CarbType, GlucoseType, InsulinDoseType>(input: LoopAlgorithmInput<CarbType, GlucoseType, InsulinDoseType>) -> LoopAlgorithmOutput<CarbType> {
 
         let prediction = generatePrediction(
             start: input.predictionStart,

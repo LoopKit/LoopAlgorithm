@@ -8,10 +8,10 @@
 import Foundation
 import HealthKit
 
-public struct LoopAlgorithmOutput {
+public struct LoopAlgorithmOutput<CarbEntryType: CarbEntry> {
     public var recommendationResult: Result<LoopAlgorithmDoseRecommendation,Error>
     public var predictedGlucose: [PredictedGlucoseValue]
-    public var effects: LoopAlgorithmEffects
+    public var effects: LoopAlgorithmEffects<CarbEntryType>
     public var dosesRelativeToBasal: [BasalRelativeDose]
     public var activeInsulin: Double?
     public var activeCarbs: Double?
@@ -19,7 +19,7 @@ public struct LoopAlgorithmOutput {
     public init(
         recommendationResult: Result<LoopAlgorithmDoseRecommendation, Error>,
         predictedGlucose: [PredictedGlucoseValue],
-        effects: LoopAlgorithmEffects,
+        effects: LoopAlgorithmEffects<CarbEntryType>,
         dosesRelativeToBasal: [BasalRelativeDose],
         activeInsulin: Double? = nil,
         activeCarbs: Double? = nil

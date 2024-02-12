@@ -15,13 +15,4 @@ public enum InsulinType: Int, Codable, CaseIterable {
     case fiasp
     case lyumjev
     case afrezza
-    
-    public var pumpAdministerable: Bool {
-        switch self {
-        case .afrezza:
-            return false
-        default:
-            return true
-        }
-    }
 }

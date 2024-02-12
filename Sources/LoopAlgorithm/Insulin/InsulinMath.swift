@@ -255,7 +255,7 @@ extension Collection where Element == BasalRelativeDose {
      - parameter insulinModelProvider:  A factory that can provide an insulin model given an insulin type
      - parameter date:                  The date at which to calculate remaining insulin.  If nil, current date is used.
 
-     - returns: A sequence of insulin amount remaining
+     - returns: Insulin amount remaining at specified time
      */
     public func insulinOnBoard(
         insulinModelProvider: InsulinModelProvider = PresetInsulinModelProvider(defaultRapidActingModel: nil),

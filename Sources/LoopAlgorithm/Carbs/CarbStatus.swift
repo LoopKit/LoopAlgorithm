@@ -1,5 +1,6 @@
 //
 //  CarbStatus.swift
+//  LoopKit
 //
 //  Copyright © 2017 LoopKit Authors. All rights reserved.
 //
@@ -8,25 +9,33 @@ import Foundation
 import HealthKit
 
 
-public struct CarbStatus {
+public struct CarbStatus<T: CarbEntry> {
+    /// Details entered by the user
+    public let entry: T
+
     /// The last-computed absorption of the carbs
     public let absorption: AbsorbedCarbValue?
 
     /// The timeline of observed carb absorption. Nil if observed absorption is less than the modeled minimum
     public let observedTimeline: [CarbValue]?
-
-    public var quantity: HKQuantity
-
-    public var startDate: Date
-
-    public var originalAbsorptionTime: TimeInterval?
 }
 
 
 // Masquerade as a carb entry, substituting AbsorbedCarbValue's interpretation of absorption time
+extension CarbStatus: SampleValue {
+    public var quantity: HKQuantity {
+        return entry.quantity
+    }
+
+    public var startDate: Date {
+        return entry.startDate
+    }
+}
+
+
 extension CarbStatus: CarbEntry {
     public var absorptionTime: TimeInterval? {
-        return absorption?.estimatedDate.duration ?? originalAbsorptionTime
+        return absorption?.estimatedDate.duration ?? entry.absorptionTime
     }
 }
 
@@ -38,7 +47,7 @@ extension CarbStatus {
             let absorption = absorption
         else {
             // We have to have absorption info for dynamic calculation
-            return carbsOnBoard(at: date, defaultAbsorptionTime: defaultAbsorptionTime, delay: delay, absorptionModel: absorptionModel)
+            return entry.carbsOnBoard(at: date, defaultAbsorptionTime: defaultAbsorptionTime, delay: delay, absorptionModel: absorptionModel)
         }
 
         let unit = HKUnit.gram()
@@ -63,7 +72,7 @@ extension CarbStatus {
 
         // Observed absorption
         // TODO: This creates an O(n^2) situation for COB timelines
-        let total = quantity.doubleValue(for: unit)
+        let total = entry.quantity.doubleValue(for: unit)
         return max(observedTimeline.filter({ $0.endDate <= date }).reduce(total) { (total, value) -> Double in
             return total - value.quantity.doubleValue(for: unit)
         }, 0)
@@ -74,7 +83,7 @@ extension CarbStatus {
             let absorption = absorption
         else {
             // We have to have absorption info for dynamic calculation
-            return absorbedCarbs(at: date, absorptionTime: absorptionTime, delay: delay, absorptionModel: absorptionModel)
+            return entry.absorbedCarbs(at: date, absorptionTime: absorptionTime, delay: delay, absorptionModel: absorptionModel)
         }
 
         let unit = HKUnit.gram()

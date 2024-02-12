@@ -12,6 +12,7 @@ public struct FixtureCarbEntry: CarbEntry {
     public var absorptionTime: TimeInterval?
     public var startDate: Date
     public var quantity: HKQuantity
+    public var foodType: String?
 }
 
 extension FixtureCarbEntry: Codable {

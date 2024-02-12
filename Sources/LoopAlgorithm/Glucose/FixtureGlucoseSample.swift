@@ -8,7 +8,6 @@
 import HealthKit
 
 public struct FixtureGlucoseSample: GlucoseSampleValue, Equatable {
-
     public static let defaultProvenanceIdentifier = "com.LoopKit.Loop"
 
     public let provenanceIdentifier: String
@@ -16,6 +15,8 @@ public struct FixtureGlucoseSample: GlucoseSampleValue, Equatable {
     public let quantity: HKQuantity
     public let isDisplayOnly: Bool
     public let wasUserEntered: Bool
+    public var condition: GlucoseCondition?
+    public var trendRate: HKQuantity?
 
     public init(
         provenanceIdentifier: String = Self.defaultProvenanceIdentifier,
