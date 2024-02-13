@@ -14,6 +14,7 @@ public enum AlgorithmError: Error {
     case basalTimelineIncomplete
     case missingSuspendThreshold
     case sensitivityTimelineIncomplete
+    case futureBasalNotAllowed
 }
 
 public struct LoopAlgorithmEffects<CarbStatusType: CarbEntry> {
@@ -24,7 +25,7 @@ public struct LoopAlgorithmEffects<CarbStatusType: CarbEntry> {
     public var momentum: [GlucoseEffect]
     public var insulinCounteraction: [GlucoseEffectVelocity]
     public var retrospectiveGlucoseDiscrepancies: [GlucoseChange]
-    public var totalGlucoseCorrectionEffect: HKQuantity?
+    public var totalRetrospectiveCorrectionEffect: HKQuantity?
 
     public init(
         insulin: [GlucoseEffect],
@@ -34,7 +35,7 @@ public struct LoopAlgorithmEffects<CarbStatusType: CarbEntry> {
         momentum: [GlucoseEffect],
         insulinCounteraction: [GlucoseEffectVelocity],
         retrospectiveGlucoseDiscrepancies: [GlucoseChange],
-        totalGlucoseCorrectionEffect: HKQuantity? = nil
+        totalRetrospectiveCorrectionEffect: HKQuantity? = nil
     ) {
         self.insulin = insulin
         self.carbs = carbs
@@ -43,7 +44,7 @@ public struct LoopAlgorithmEffects<CarbStatusType: CarbEntry> {
         self.momentum = momentum
         self.insulinCounteraction = insulinCounteraction
         self.retrospectiveGlucoseDiscrepancies = retrospectiveGlucoseDiscrepancies
-        self.totalGlucoseCorrectionEffect = totalGlucoseCorrectionEffect
+        self.totalRetrospectiveCorrectionEffect = totalRetrospectiveCorrectionEffect
     }
 }
 
@@ -123,7 +124,7 @@ public struct LoopAlgorithm {
         var momentumEffects: [GlucoseEffect] = []
         var insulinCounteractionEffects: [GlucoseEffectVelocity] = []
         var retrospectiveGlucoseDiscrepanciesSummed: [GlucoseChange] = []
-        var totalGlucoseCorrectionEffect: HKQuantity?
+        var totalRetrospectiveCorrectionEffect: HKQuantity?
         var activeInsulin: Double?
         var activeCarbs: Double?
         //var carbStatus: [CarbStatus] = []
@@ -209,7 +210,7 @@ public struct LoopAlgorithm {
                 retrospectiveCorrectionGroupingInterval: LoopMath.retrospectiveCorrectionGroupingInterval
             )
 
-            totalGlucoseCorrectionEffect = rc.totalGlucoseCorrectionEffect
+            totalRetrospectiveCorrectionEffect = rc.totalGlucoseCorrectionEffect
 
             var effects = [[GlucoseEffect]]()
 
@@ -266,7 +267,7 @@ public struct LoopAlgorithm {
                 momentum: momentumEffects,
                 insulinCounteraction: insulinCounteractionEffects,
                 retrospectiveGlucoseDiscrepancies: retrospectiveGlucoseDiscrepanciesSummed,
-                totalGlucoseCorrectionEffect: totalGlucoseCorrectionEffect
+                totalRetrospectiveCorrectionEffect: totalRetrospectiveCorrectionEffect
             ),
             dosesRelativeToBasal: dosesRelativeToBasal,
             activeInsulin: activeInsulin,
@@ -435,6 +436,13 @@ public struct LoopAlgorithm {
 
             guard input.predictionStart.timeIntervalSince(latestGlucose.startDate) < inputDataRecencyInterval else {
                 throw AlgorithmError.glucoseTooOld
+            }
+
+            // When running the algorithm for automated dosing, future basal should not be included
+            if let basalEnd = input.doses.filter({ $0.deliveryType == .basal }).map({ $0.endDate }).max() {
+                guard !input.recommendationType.automated || basalEnd <= input.predictionStart else {
+                    throw AlgorithmError.futureBasalNotAllowed
+                }
             }
 
             let forecastEnd = input.predictionStart.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration)

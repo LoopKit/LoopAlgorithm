@@ -189,7 +189,7 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
             "proportionalCorrection [mg/dL]: \(proportionalCorrection)",
             "integralCorrection [mg/dL]: \(integralCorrection)",
             "differentialCorrection [mg/dL]: \(differentialCorrection)",
-            "totalGlucoseCorrectionEffect: \(String(describing: totalGlucoseCorrectionEffect))",
+            "totalRetrospectiveCorrectionEffect: \(String(describing: totalGlucoseCorrectionEffect))",
             "integralCorrectionEffectDuration [min]: \(String(describing: integralCorrectionEffectDuration?.minutes))"
         ]
         

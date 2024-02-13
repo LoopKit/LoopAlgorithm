@@ -47,8 +47,6 @@ extension BasalRelativeDose {
             return volume
         }
     }
-
-    
 }
 
 extension BasalRelativeDose {

@@ -386,15 +386,6 @@ extension Collection {
                 }
                 let csf = isf.value.doubleValue(for: mgdL) / cr.value
 
-                let val = entry.dynamicAbsorbedCarbs(
-                    at: date,
-                    absorptionTime: entry.absorptionTime ?? defaultAbsorptionTime,
-                    delay: delay,
-                    delta: delta,
-                    absorptionModel: absorptionModel
-                )
-                print("csf @\(date) = \(isf.value.doubleValue(for: mgdL)) / \(cr.value) = \(csf), val = \(val), \(entry.quantity.doubleValue(for: .gram()))g")
-
                 return value + csf * entry.dynamicAbsorbedCarbs(
                     at: date,
                     absorptionTime: entry.absorptionTime ?? defaultAbsorptionTime,
