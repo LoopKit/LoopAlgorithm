@@ -158,10 +158,10 @@ extension Array where Element: GlucoseValue {
     /// `date` to correct the predicted glucose to the middle of `correctionRange` at the time of prediction.
     ///
     /// - Parameters:
-    ///   - correctionRange: The timeline of glucose ranges used for correction
+    ///   - correctionRange: The timeline of glucose ranges used for correction. Must cover the range of prediction timestamp contained in this array.
     ///   - date: The date the insulin correction is delivered
     ///   - suspendThreshold: The glucose value below which only suspension is returned
-    ///   - insulinSensitivityTimeline: The timeline of expected insulin sensitivity over the period of dose absorption
+    ///   - insulinSensitivityTimeline: The timeline of expected insulin sensitivity over the period of dose absorption. Must cover the range of prediction timestamp contained in this array.
     ///   - model: The insulin effect model
     /// - Returns: A correction value in units, or nil if no correction needed
     func insulinCorrection(
@@ -224,11 +224,18 @@ extension Array where Element: GlucoseValue {
 
             let isfSegments = insulinSensitivity.filterDateRange(date, prediction.startDate)
 
+            var isfEnd: TimeInterval?
+
             let effectedSensitivity = isfSegments.reduce(0) { partialResult, segment in
                 let start = Swift.max(date, segment.startDate).timeIntervalSince(date)
                 let end = Swift.min(prediction.startDate, segment.endDate).timeIntervalSince(date)
                 let percentEffected = model.percentEffectRemaining(at: start) - model.percentEffectRemaining(at: end)
+                isfEnd = end
                 return percentEffected * segment.value.doubleValue(for: unit)
+            }
+
+            guard let isfEnd, isfEnd >= prediction.startDate.timeIntervalSince(date) else {
+                preconditionFailure("Sensitivity timeline must cover date: \(prediction.startDate)")
             }
 
             // Update range statistics

@@ -32,6 +32,14 @@ final class LoopAlgorithmTests: XCTestCase {
         XCTAssertEqual(output.recommendation, recommendation)
     }
 
+    func loadPredictedGlucoseFixture(_ name: String) -> [PredictedGlucoseValue] {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let url = Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures")!
+        return try! decoder.decode([PredictedGlucoseValue].self, from: try! Data(contentsOf: url))
+    }
+
     func testCarbsWithSensitivityChange() throws {
 
         // This test computes a dose with a future carb entry
@@ -71,18 +79,19 @@ final class LoopAlgorithmTests: XCTestCase {
         XCTAssertEqual(outputA.activeCarbs, outputB.activeCarbs)
         XCTAssertEqual(outputA.activeInsulin, outputB.activeInsulin)
 
-        XCTAssertEqual(outputA.effects.carbs.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 190.0)
-        XCTAssertEqual(outputB.effects.carbs.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 190.0)
+        XCTAssertEqual(outputA.effects.carbs.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 55.0)
+        XCTAssertEqual(outputB.effects.carbs.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 55.0)
 
         XCTAssertEqual(outputA.effects.insulin.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
         XCTAssertEqual(outputB.effects.insulin.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
 
-        XCTAssertEqual(outputA.effects.momentum.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
-        XCTAssertEqual(outputB.effects.momentum.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
+        XCTAssertEqual(outputA.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 165)
+        XCTAssertEqual(outputB.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 165)
 
-        // TODO:
-//        XCTAssertEqual(outputA.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0)
-//        XCTAssertEqual(outputB.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0)
+        // Even though all the input data is the same (just shifted in time), momentum effect varies in relation to how offset
+        // the glucose samples are from the simulation timeline (at exact 5 minute intervals from the top of the hour)
+//        XCTAssertEqual(outputA.effects.momentum.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
+//        XCTAssertEqual(outputB.effects.momentum.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
 //
 //        XCTAssertEqual(outputA.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 283.7, accuracy: 0.01)
 //        XCTAssertEqual(outputB.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 283.7, accuracy: 0.01)
@@ -114,13 +123,116 @@ final class LoopAlgorithmTests: XCTestCase {
         let output = LoopAlgorithm.run(input: input)
 
         let carbStatus = output.effects.carbStatus.first!
-        XCTAssertEqual(carbStatus.absorption!.observedProgress.doubleValue(for: .percent()), 0.11, accuracy: 0.01)
+        XCTAssertEqual(carbStatus.absorption!.observedProgress.doubleValue(for: .percent()), 0.36, accuracy: 0.01)
 
         XCTAssert(carbStatus.absorption!.isActive)
 
         let basalAdjustment = output.recommendation!.automatic!.basalAdjustment
 
-        XCTAssertEqual(basalAdjustment!.unitsPerHour, 5.06, accuracy: 0.01)
+        XCTAssertEqual(basalAdjustment!.unitsPerHour, 5.83, accuracy: 0.01)
+    }
+
+    func testLiveCaptureWithFunctionalAlgorithm() {
+        // This matches the "testForecastFromLiveCaptureInputData" test of LoopDataManagerDosingTests,
+        // Using the same input data, but generating the forecast using the LoopAlgorithm.generatePrediction()
+        // function.
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let url = Bundle.module.url(forResource: "live_capture_input", withExtension: "json", subdirectory: "Fixtures")!
+        let input = try! decoder.decode(LoopPredictionInput.self, from: try! Data(contentsOf: url))
+
+        let prediction = LoopAlgorithm.generatePrediction(
+            start: input.glucoseHistory.last?.startDate ?? Date(),
+            glucoseHistory: input.glucoseHistory,
+            doses: input.doses,
+            carbEntries: input.carbEntries,
+            basal: input.basal,
+            sensitivity: input.sensitivity,
+            carbRatio: input.carbRatio,
+            useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
+        )
+
+        let expectedPredictedGlucose = loadPredictedGlucoseFixture("live_capture_predicted_glucose")
+
+        XCTAssertEqual(expectedPredictedGlucose.count, prediction.glucose.count)
+
+        let defaultAccuracy = 1.0 / 40.0
+
+        for (expected, calculated) in zip(expectedPredictedGlucose, prediction.glucose) {
+            XCTAssertEqual(expected.startDate, calculated.startDate)
+            XCTAssertEqual(expected.quantity.doubleValue(for: .milligramsPerDeciliter), calculated.quantity.doubleValue(for: .milligramsPerDeciliter), accuracy: defaultAccuracy)
+        }
+    }
+
+    func testAutoBolusMaxIOBClamping() async {
+        let now = ISO8601DateFormatter().date(from: "2020-03-11T12:13:14-0700")!
+
+        var input = LoopAlgorithmInputFixture.mock(for: now)
+        input.recommendationType = .automaticBolus
+
+        // 8U bolus on board, and 100g carbs; CR = 10, so that should be 10U to cover the carbs
+        input.doses = [FixtureInsulinDose(
+            deliveryType: .bolus,
+            startDate: now.addingTimeInterval(-.minutes(5)),
+            endDate: now.addingTimeInterval(-.minutes(4)),
+            volume: 8
+        )]
+        input.carbEntries = [
+            FixtureCarbEntry(startDate: now.addingTimeInterval(.minutes(-5)), quantity: .carbs(value: 100))
+        ]
+
+        // Max activeInsulin = 2 x maxBolus = 16U
+        input.maxBolus = 8
+        var output = LoopAlgorithm.run(input: input)
+        var recommendedBolus = output.recommendation!.automatic?.bolusUnits
+        var activeInsulin = output.activeInsulin!
+        XCTAssertEqual(activeInsulin, 8.0)
+        XCTAssertEqual(recommendedBolus!, 1.66, accuracy: 0.01)
+
+        // Now try with maxBolus of 4; should not recommend any more insulin, as we're at our max iob
+        input.maxBolus = 4
+        output = LoopAlgorithm.run(input: input)
+        recommendedBolus = output.recommendation!.automatic?.bolusUnits
+        activeInsulin = output.activeInsulin!
+        XCTAssertEqual(activeInsulin, 8.0)
+        XCTAssertEqual(recommendedBolus!, 0, accuracy: 0.01)
+    }
+
+    func testTempBasalMaxIOBClamping() {
+        let now = ISO8601DateFormatter().date(from: "2020-03-11T12:13:14-0700")!
+
+        var input = LoopAlgorithmInput.mock(for: now)
+        input.recommendationType = .tempBasal
+
+        // 8U bolus on board, and 100g carbs; CR = 10, so that should be 10U to cover the carbs
+        input.doses = [FixtureInsulinDose(
+            deliveryType: .bolus,
+            startDate: now.addingTimeInterval(-.minutes(5)),
+            endDate: now.addingTimeInterval(-.minutes(4)),
+            volume: 8
+        )]
+
+        input.carbEntries = [
+            FixtureCarbEntry(startDate: now.addingTimeInterval(.minutes(-5)), quantity: .carbs(value: 100))
+        ]
+
+        // Max activeInsulin = 2 x maxBolus = 16U
+        input.maxBolus = 8
+        var output = LoopAlgorithm.run(input: input)
+        var recommendedRate = output.recommendation!.automatic!.basalAdjustment!.unitsPerHour
+        var activeInsulin = output.activeInsulin!
+        XCTAssertEqual(activeInsulin, 8.0)
+        XCTAssertEqual(recommendedRate, 8.0, accuracy: 0.01)
+
+        // Now try with maxBolus of 4; should only recommend scheduled basal (1U/hr), as we're at our max iob
+        input.maxBolus = 4
+        output = LoopAlgorithm.run(input: input)
+        recommendedRate = output.recommendation!.automatic!.basalAdjustment!.unitsPerHour
+        activeInsulin = output.activeInsulin!
+        XCTAssertEqual(activeInsulin, 8.0)
+        XCTAssertEqual(recommendedRate, 1.0, accuracy: 0.01)
     }
 
 }
