@@ -16,7 +16,7 @@ import HealthKit
  
  */
 public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
-    static let retrospectionInterval = TimeInterval(minutes: 180)
+    public static let retrospectionInterval = TimeInterval(minutes: 180)
 
     /// RetrospectiveCorrection protocol variables
     /// Standard effect duration

@@ -24,10 +24,13 @@ class CorrectionDosingTests: XCTestCase {
     let basalRate = 1.0
 
     override func setUp() {
+        let lowerBound = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 90)
+        let upperBound = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 120)
+
         target = [AbsoluteScheduleValue(
             startDate: testDate.addingTimeInterval(.hours(-24)),
             endDate: testDate.addingTimeInterval(.hours(24)),
-            value: DoubleRange(minValue: 90, maxValue: 120).quantityRange(for: .milligramsPerDeciliter)
+            value: lowerBound...upperBound
         )]
 
         sensitivity = [AbsoluteScheduleValue(
