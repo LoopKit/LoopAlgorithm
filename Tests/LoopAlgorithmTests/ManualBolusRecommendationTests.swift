@@ -35,7 +35,7 @@ final class ManualBolusRecommendationTests: XCTestCase {
 
 
     func testRecommendationWithoutNoticeCodable() throws {
-        var recommendation = ManualBolusRecommendation(amount: 1.0, notice: nil)
+        let recommendation = ManualBolusRecommendation(amount: 1.0, notice: nil)
         let encoded = try encoder.encode(recommendation)
         XCTAssertEqual(
             """
@@ -45,12 +45,13 @@ final class ManualBolusRecommendationTests: XCTestCase {
             """,
             String(data: encoded , encoding: .utf8)!)
 
-        var decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        let decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        XCTAssertEqual(decoded, recommendation)
     }
 
     func testAllGlucoseBelowTargetCodable() throws {
         let startDate = dateFormatter.date(from: "2015-07-13T12:02:37")!
-        var recommendation = ManualBolusRecommendation(amount: 0, notice: .allGlucoseBelowTarget(minGlucose: .init(startDate: startDate, quantity: .glucose(value: 55))))
+        let recommendation = ManualBolusRecommendation(amount: 0, notice: .allGlucoseBelowTarget(minGlucose: .init(startDate: startDate, quantity: .glucose(value: 55))))
         let encoded = try encoder.encode(recommendation)
         XCTAssertEqual(
             """
@@ -69,12 +70,13 @@ final class ManualBolusRecommendationTests: XCTestCase {
             """,
             String(data: encoded , encoding: .utf8)!)
 
-        var decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        let decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        XCTAssertEqual(decoded, recommendation)
     }
 
     func testCurrentGlucoseBelowTargetCodable() throws {
         let startDate = dateFormatter.date(from: "2015-07-13T12:02:37")!
-        var recommendation = ManualBolusRecommendation(amount: 0, notice: .currentGlucoseBelowTarget(glucose: .init(startDate: startDate, quantity: .glucose(value: 65))))
+        let recommendation = ManualBolusRecommendation(amount: 0, notice: .currentGlucoseBelowTarget(glucose: .init(startDate: startDate, quantity: .glucose(value: 65))))
         let encoded = try encoder.encode(recommendation)
         XCTAssertEqual(
             """
@@ -93,12 +95,13 @@ final class ManualBolusRecommendationTests: XCTestCase {
             """,
             String(data: encoded , encoding: .utf8)!)
 
-        var decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        let decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        XCTAssertEqual(decoded, recommendation)
     }
 
     func testPredictedGlucoseBelowTargetCodable() throws {
         let startDate = dateFormatter.date(from: "2015-07-13T12:02:37")!
-        var recommendation = ManualBolusRecommendation(amount: 0, notice: .predictedGlucoseBelowTarget(minGlucose: .init(startDate: startDate, quantity: .glucose(value: 65))))
+        let recommendation = ManualBolusRecommendation(amount: 0, notice: .predictedGlucoseBelowTarget(minGlucose: .init(startDate: startDate, quantity: .glucose(value: 65))))
         let encoded = try encoder.encode(recommendation)
         XCTAssertEqual(
             """
@@ -117,12 +120,13 @@ final class ManualBolusRecommendationTests: XCTestCase {
             """,
             String(data: encoded , encoding: .utf8)!)
 
-        var decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        let decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        XCTAssertEqual(decoded, recommendation)
     }
 
     func testPredictedGlucoseInRangeCodable() throws {
         let startDate = dateFormatter.date(from: "2015-07-13T12:02:37")!
-        var recommendation = ManualBolusRecommendation(amount: 0, notice: .predictedGlucoseInRange)
+        let recommendation = ManualBolusRecommendation(amount: 0, notice: .predictedGlucoseInRange)
         let encoded = try encoder.encode(recommendation)
         XCTAssertEqual(
             """
@@ -133,12 +137,13 @@ final class ManualBolusRecommendationTests: XCTestCase {
             """,
             String(data: encoded , encoding: .utf8)!)
 
-        var decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        let decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        XCTAssertEqual(decoded, recommendation)
     }
 
     func testGlucoseBelowSuspendThresholdCodable() throws {
         let startDate = dateFormatter.date(from: "2015-07-13T12:02:37")!
-        var recommendation = ManualBolusRecommendation(amount: 0, notice: .glucoseBelowSuspendThreshold(minGlucose: .init(startDate: startDate, quantity: .glucose(value: 55))))
+        let recommendation = ManualBolusRecommendation(amount: 0, notice: .glucoseBelowSuspendThreshold(minGlucose: .init(startDate: startDate, quantity: .glucose(value: 55))))
         let encoded = try encoder.encode(recommendation)
         XCTAssertEqual(
             """
@@ -157,7 +162,8 @@ final class ManualBolusRecommendationTests: XCTestCase {
             """,
             String(data: encoded , encoding: .utf8)!)
 
-        var decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        let decoded = try decoder.decode(ManualBolusRecommendation.self, from: encoded)
+        XCTAssertEqual(decoded, recommendation)
     }
 }
 

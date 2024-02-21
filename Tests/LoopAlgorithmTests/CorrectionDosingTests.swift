@@ -24,8 +24,8 @@ class CorrectionDosingTests: XCTestCase {
     let basalRate = 1.0
 
     override func setUp() {
-        let lowerBound = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 90)
-        let upperBound = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 120)
+        let lowerBound: HKQuantity = .glucose(value: 90)
+        let upperBound: HKQuantity = .glucose(value: 120)
 
         target = [AbsoluteScheduleValue(
             startDate: testDate.addingTimeInterval(.hours(-24)),
