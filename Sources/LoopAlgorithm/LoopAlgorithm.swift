@@ -461,10 +461,11 @@ public struct LoopAlgorithm {
 
             // TODO: This is to be removed when implementing mid-absorption ISF changes
             // This sets a single ISF value for the duration of the dose.
+            let sensitivityEnd = max(forecastEnd, prediction.effects.insulin.last?.startDate ?? .distantPast)
             let sensitivityAtPredictionStart = input.sensitivity.first { $0.startDate <= input.predictionStart && $0.endDate >= input.predictionStart }!
             let sensitivityOverPrediction = AbsoluteScheduleValue(
                 startDate: sensitivityAtPredictionStart.startDate,
-                endDate: forecastEnd,
+                endDate: sensitivityEnd,
                 value: sensitivityAtPredictionStart.value
             )
             let sensitivityForDosing = [sensitivityOverPrediction]

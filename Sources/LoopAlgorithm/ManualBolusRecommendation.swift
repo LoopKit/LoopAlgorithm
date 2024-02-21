@@ -91,10 +91,6 @@ public struct ManualBolusRecommendation {
     public var amount: Double
     public var notice: BolusRecommendationNotice?
 
-    public var quantity: HKQuantity {
-        return HKQuantity(unit: .internationalUnit(), doubleValue: amount)
-    }
-
     public init(amount: Double, notice: BolusRecommendationNotice? = nil) {
         self.amount = amount
         self.notice = notice
@@ -103,12 +99,8 @@ public struct ManualBolusRecommendation {
 
 extension ManualBolusRecommendation: Codable {}
 
-extension ManualBolusRecommendation: Comparable {
+extension ManualBolusRecommendation: Equatable {
     public static func ==(lhs: ManualBolusRecommendation, rhs: ManualBolusRecommendation) -> Bool {
         return lhs.amount == rhs.amount
-    }
-
-    public static func <(lhs: ManualBolusRecommendation, rhs: ManualBolusRecommendation) -> Bool {
-        return lhs.amount < rhs.amount
     }
 }

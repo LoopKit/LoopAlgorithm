@@ -16,7 +16,7 @@ import HealthKit
  
  */
 public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
-    public static let retrospectionInterval = TimeInterval(minutes: 180)
+    static let retrospectionInterval = TimeInterval(minutes: 180)
 
     /// RetrospectiveCorrection protocol variables
     /// Standard effect duration
@@ -57,8 +57,7 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
     var integralCorrection: Double = 0.0
     var differentialCorrection: Double = 0.0
     var currentDate: Date = Date()
-    var ircStatus: String = "-"
-    
+
     public init(effectDuration: TimeInterval) {
         self.effectDuration = effectDuration
     }
@@ -90,13 +89,11 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
         guard let currentDiscrepancy = retrospectiveGlucoseDiscrepanciesSummed?.last,
             glucoseDate.timeIntervalSince(currentDiscrepancy.endDate) <= recencyInterval
             else {
-                ircStatus = "discrepancy not available, effect not computed."
                 totalGlucoseCorrectionEffect = nil
                 return( [] )
         }
         
         // Default values if we are not able to calculate integral retrospective correction
-        ircStatus = "defaulted to standard RC, past discrepancies or user settings not available."
         let currentDiscrepancyValue = currentDiscrepancy.quantity.doubleValue(for: unit)
         var scaledCorrection = currentDiscrepancyValue
         totalGlucoseCorrectionEffect = HKQuantity(unit: unit, doubleValue: currentDiscrepancyValue)
@@ -104,8 +101,7 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
         
         // Calculate integral retrospective correction if past discrepancies over integration interval are available and if user settings are available
         if let pastDiscrepancies = retrospectiveGlucoseDiscrepanciesSummed?.filterDateRange(glucoseDate.addingTimeInterval(-Self.retrospectionInterval), glucoseDate) {
-            ircStatus = "effect computed successfully."
-            
+
             // To reduce response delay, integral retrospective correction is computed over an array of recent contiguous discrepancy values having the same sign as the latest discrepancy value
             recentDiscrepancyValues = []
             var nextDiscrepancy = currentDiscrepancy
@@ -171,29 +167,5 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
         // Return glucose correction effects
         return( glucoseCorrectionEffect )
     }
-    
-    public var debugDescription: String {
-        let report: [String] = [
-            "## IntegralRetrospectiveCorrection",
-            "",
-            "Last updated: \(currentDate)",
-            "Status: \(ircStatus)",
-            "currentDiscrepancyGain: \(IntegralRetrospectiveCorrection.currentDiscrepancyGain)",
-            "persistentDiscrepancyGain: \(IntegralRetrospectiveCorrection.persistentDiscrepancyGain)",
-            "correctionTimeConstant [min]: \(IntegralRetrospectiveCorrection.correctionTimeConstant.minutes)",
-            "proportionalGain: \(IntegralRetrospectiveCorrection.proportionalGain)",
-            "integralForget: \(IntegralRetrospectiveCorrection.integralForget)",
-            "integralGain: \(IntegralRetrospectiveCorrection.integralGain)",
-            "differentialGain: \(IntegralRetrospectiveCorrection.differentialGain)",
-            "Integration performed over \(recentDiscrepancyValues.count) most recent discrepancies having the same sign as the latest discrepancy value. Earliest-to-most-recent recentDiscrepancyValues [mg/dL]: \(recentDiscrepancyValues)",
-            "proportionalCorrection [mg/dL]: \(proportionalCorrection)",
-            "integralCorrection [mg/dL]: \(integralCorrection)",
-            "differentialCorrection [mg/dL]: \(differentialCorrection)",
-            "totalRetrospectiveCorrectionEffect: \(String(describing: totalGlucoseCorrectionEffect))",
-            "integralCorrectionEffectDuration [min]: \(String(describing: integralCorrectionEffectDuration?.minutes))"
-        ]
-        
-        return report.joined(separator: "\n")
-    }
-    
+
 }

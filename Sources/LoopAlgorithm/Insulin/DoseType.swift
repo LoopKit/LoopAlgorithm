@@ -12,17 +12,6 @@ import Foundation
 public enum InsulinDeliveryType: String, CaseIterable, Equatable {
     case bolus
     case basal
-
-    init?(fixtureValue: String) {
-        switch fixtureValue {
-        case "TempBasal":
-            self = .basal
-        case "Bolus":
-            self = .bolus
-        default:
-            return nil
-        }
-    }
 }
 
 extension InsulinDeliveryType: Codable {}

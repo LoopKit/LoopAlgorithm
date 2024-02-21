@@ -132,11 +132,7 @@ final class LoopAlgorithmTests: XCTestCase {
         XCTAssertEqual(basalAdjustment!.unitsPerHour, 5.83, accuracy: 0.01)
     }
 
-    func testLiveCaptureWithFunctionalAlgorithm() {
-        // This matches the "testForecastFromLiveCaptureInputData" test of LoopDataManagerDosingTests,
-        // Using the same input data, but generating the forecast using the LoopAlgorithm.generatePrediction()
-        // function.
-
+    func testLiveCapture() {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 

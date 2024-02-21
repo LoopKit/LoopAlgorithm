@@ -252,4 +252,20 @@ class InsulinMathTests: XCTestCase {
             XCTAssertEqual(expected.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), accuracy: 3.0)
         }
     }
+
+    func testInsulinOnBoardTimeline() {
+        let start = dateFormatter.date(from: "2015-10-15T19:00:00")!
+        let doses = [
+            BasalRelativeDose(type: .bolus, startDate: start, endDate: start.addingTimeInterval(.minutes(1)), volume: 2)
+        ]
+        let timeline = doses.insulinOnBoardTimeline()
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let url = Bundle.module.url(forResource: "iob_timeline", withExtension: "json", subdirectory: "Fixtures")!
+        let expectedValues = try! decoder.decode([InsulinValue].self, from: try! Data(contentsOf: url))
+
+        XCTAssertEqual(timeline, expectedValues)
+    }
+
 }
