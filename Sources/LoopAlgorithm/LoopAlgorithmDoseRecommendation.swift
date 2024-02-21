@@ -20,16 +20,3 @@ public struct LoopAlgorithmDoseRecommendation: Equatable {
 }
 
 extension LoopAlgorithmDoseRecommendation: Codable {}
-
-extension LoopAlgorithmDoseRecommendation {
-    public func printFixture() {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(self),
-           let json = String(data: data, encoding: .utf8)
-        {
-            print(json)
-        }
-    }
-}
