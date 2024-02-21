@@ -23,7 +23,7 @@ public struct GlucoseEffectVelocity: SampleValue {
 
 
 extension GlucoseEffectVelocity {
-    static let perSecondUnit = HKUnit.milligramsPerDeciliter.unitDivided(by: .second())
+    public static let perSecondUnit = HKUnit.milligramsPerDeciliter.unitDivided(by: .second())
 
     /// The integration of the velocity span
     public var effect: GlucoseEffect {
@@ -32,28 +32,6 @@ extension GlucoseEffectVelocity {
 
         return GlucoseEffect(
             startDate: endDate,
-            quantity: HKQuantity(
-                unit: .milligramsPerDeciliter,
-                doubleValue: velocityPerSecond * duration
-            )
-        )
-    }
-
-    /// The integration of the velocity span from `start` to `end`
-    public func effect(from start: Date, to end: Date) -> GlucoseEffect? {
-        guard
-            start <= end,
-            startDate <= start,
-            end <= endDate
-        else {
-            return nil
-        }
-
-        let duration = end.timeIntervalSince(start)
-        let velocityPerSecond = quantity.doubleValue(for: GlucoseEffectVelocity.perSecondUnit)
-
-        return GlucoseEffect(
-            startDate: end,
             quantity: HKQuantity(
                 unit: .milligramsPerDeciliter,
                 doubleValue: velocityPerSecond * duration

@@ -202,6 +202,8 @@ public struct LoopAlgorithm {
             rc = StandardRetrospectiveCorrection(effectDuration: LoopMath.retrospectiveCorrectionEffectDuration)
         }
 
+        
+
         if let latestGlucose = glucoseHistory.last {
             retrospectiveCorrectionEffects = rc.computeEffect(
                 startingAt: latestGlucose,
