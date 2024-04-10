@@ -192,6 +192,8 @@ extension Array where Element: GlucoseValue {
 
         let suspendThresholdValue = suspendThreshold.doubleValue(for: unit)
 
+        let endOfAbsorption = date.addingTimeInterval(model.effectDuration)
+
         // For each prediction above target, determine the amount of insulin necessary to correct glucose based on the modeled effectiveness of the insulin at that time
         for prediction in self {
             guard prediction.startDate >= date else {
@@ -250,17 +252,14 @@ extension Array where Element: GlucoseValue {
                 effectedSensitivity: Swift.max(.ulpOfOne, effectedSensitivity)
             )
 
-            guard correctionUnits > 0 else {
-                continue
+            if correctionUnits > 0 && (minCorrectionUnits == nil || correctionUnits < minCorrectionUnits!) {
+                correctingGlucose = prediction
+                minCorrectionUnits = correctionUnits
             }
 
-            // Update the correction only if we've found a new minimum
-            guard minCorrectionUnits == nil || correctionUnits < minCorrectionUnits! else {
-                continue
+            if prediction.startDate >= endOfAbsorption {
+                break
             }
-
-            correctingGlucose = prediction
-            minCorrectionUnits = correctionUnits
         }
 
         // Choose either the minimum glucose or eventual glucose as the correction delta
