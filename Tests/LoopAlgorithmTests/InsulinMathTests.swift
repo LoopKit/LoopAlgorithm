@@ -96,6 +96,44 @@ class InsulinMathTests: XCTestCase {
         }
     }
 
+    func testGlucoseEffectsHistory() {
+        let startDate = dateFormatter.date(from: "2015-10-15T00:00:00")!
+        func t(_ offset: TimeInterval) -> Date { return startDate.addingTimeInterval(offset) }
+
+        let doses: [BasalRelativeDose] = [
+            BasalRelativeDose(type: .bolus, startDate: t(.hours(1)), endDate: t(.hours(1.1)), volume: 5),
+            BasalRelativeDose(type: .bolus, startDate: t(.hours(2)), endDate: t(.hours(2.1)), volume: 5)
+        ]
+
+        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+            AbsoluteScheduleValue(startDate: t(.hours(1)), endDate: t(.hours(8)), value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 50))
+        ]
+
+        let effects = doses.glucoseEffects(insulinSensitivityHistory: sensitivity)
+
+        XCTAssertEqual(effects.count, 89)
+        XCTAssertEqual(effects.last!.quantity.doubleValue(for: .milligramsPerDeciliter), -500)
+    }
+
+    func testGlucoseEffectsTimeline() {
+        let startDate = dateFormatter.date(from: "2015-10-15T00:00:00")!
+        func t(_ offset: TimeInterval) -> Date { return startDate.addingTimeInterval(offset) }
+
+        let doses: [BasalRelativeDose] = [
+            BasalRelativeDose(type: .bolus, startDate: t(.hours(1)), endDate: t(.hours(1.1)), volume: 5),
+            BasalRelativeDose(type: .bolus, startDate: t(.hours(2)), endDate: t(.hours(2.1)), volume: 5)
+        ]
+
+        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+            AbsoluteScheduleValue(startDate: t(.hours(1)), endDate: t(.hours(9)), value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 50))
+        ]
+
+        let effects = doses.glucoseEffects(insulinSensitivityTimeline: sensitivity)
+
+        XCTAssertEqual(effects.count, 89)
+        XCTAssertEqual(effects.last!.quantity.doubleValue(for: .milligramsPerDeciliter), -500)
+    }
+
     func testGlucoseEffectFromShortTempBasal() {
         let startDate = dateFormatter.date(from: "2015-07-13T12:02:37")!
         let endDate = dateFormatter.date(from: "2015-07-13T12:07:37")!
@@ -250,6 +288,136 @@ class InsulinMathTests: XCTestCase {
             XCTAssertEqual(expected.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), accuracy: 3.0)
         }
     }
+
+    func testBasalAnnotating() {
+        let startDate = dateFormatter.date(from: "2015-10-15T00:00:00")!
+        func t(_ offset: TimeInterval) -> Date { return startDate.addingTimeInterval(offset) }
+
+        let basal = [
+            AbsoluteScheduleValue(
+                startDate: t(.hours(0)),
+                endDate: t(.hours(6)),
+                value: 1.0),
+            AbsoluteScheduleValue(
+                startDate: t(.hours(6)),
+                endDate: t(.hours(12)),
+                value: 0.8)
+        ]
+        let doses = [
+            FixtureInsulinDose(
+                deliveryType: .basal,
+                startDate: t(.hours(3)),
+                endDate: t(.hours(3.5)),
+                volume: 3 // 6 U/hr
+            ),
+            FixtureInsulinDose(
+                deliveryType: .bolus,
+                startDate: t(.hours(4.2)),
+                endDate: t(.hours(4.3)),
+                volume: 3
+            )
+        ]
+
+        let annotated = doses.annotated(with: basal, fillBasalGaps: true)
+
+        let expected = [
+            BasalRelativeDose(
+                type: .basal(
+                    scheduledRate: 1.0
+                ),
+                startDate: t(.hours(0)),
+                endDate: t(.hours(3)),
+                volume: 3
+            ),
+            BasalRelativeDose(
+                type: .basal(
+                    scheduledRate: 1.0
+                ),
+                startDate: t(.hours(3)),
+                endDate: t(.hours(3.5)),
+                volume: 3
+            ),
+            BasalRelativeDose(
+                type: .bolus,
+                startDate: t(.hours(4.2)),
+                endDate: t(.hours(4.3)),
+                volume: 3
+            ),
+            BasalRelativeDose(
+                type: .basal(
+                    scheduledRate: 1.0
+                ),
+                startDate: t(.hours(3.5)),
+                endDate: t(.hours(6)),
+                volume: 2.5
+            ),
+            BasalRelativeDose(
+                type: .basal(
+                    scheduledRate: 0.8
+                ),
+                startDate: t(.hours(6)),
+                endDate: t(.hours(12)),
+                volume: 4.8
+            )
+        ]
+
+        XCTAssertEqual(expected.count, annotated.count)
+
+        for (expectedDose, computedDose) in zip(expected, annotated) {
+            XCTAssertEqual(expectedDose.startDate, computedDose.startDate)
+            XCTAssertEqual(expectedDose.endDate, computedDose.endDate)
+            XCTAssertEqual(expectedDose.volume, computedDose.volume, accuracy: 0.01)
+            XCTAssertEqual(expectedDose.type, computedDose.type)
+        }
+    }
+
+    func testBasalAnnotatingWithNoDoses() {
+        let startDate = dateFormatter.date(from: "2015-10-15T00:00:00")!
+        func t(_ offset: TimeInterval) -> Date { return startDate.addingTimeInterval(offset) }
+
+        let basal = [
+            AbsoluteScheduleValue(
+                startDate: t(.hours(0)),
+                endDate: t(.hours(6)),
+                value: 1.0),
+            AbsoluteScheduleValue(
+                startDate: t(.hours(6)),
+                endDate: t(.hours(12)),
+                value: 0.8)
+        ]
+        let doses: [FixtureInsulinDose] = []
+
+        let annotated = doses.annotated(with: basal, fillBasalGaps: true)
+
+        let expected = [
+            BasalRelativeDose(
+                type: .basal(
+                    scheduledRate: 1.0
+                ),
+                startDate: t(.hours(0)),
+                endDate: t(.hours(6)),
+                volume: 6
+            ),
+            BasalRelativeDose(
+                type: .basal(
+                    scheduledRate: 0.8
+                ),
+                startDate: t(.hours(6)),
+                endDate: t(.hours(12)),
+                volume: 4.8
+            )
+        ]
+
+        XCTAssertEqual(expected.count, annotated.count)
+
+        for (expectedDose, computedDose) in zip(expected, annotated) {
+            XCTAssertEqual(expectedDose.startDate, computedDose.startDate)
+            XCTAssertEqual(expectedDose.endDate, computedDose.endDate)
+            XCTAssertEqual(expectedDose.volume, computedDose.volume, accuracy: 0.01)
+            XCTAssertEqual(expectedDose.type, computedDose.type)
+        }
+    }
+
 
     func testInsulinOnBoardTimeline() {
         let start = dateFormatter.date(from: "2015-10-15T19:00:00")!
