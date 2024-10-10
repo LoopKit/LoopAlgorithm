@@ -29,6 +29,7 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var maxBasalRate: Double
     public var useIntegralRetrospectiveCorrection: Bool
     public var includePositiveVelocityAndRC: Bool
+    public var useMidAbsorptionISF: Bool
     public var carbAbsorptionModel: CarbAbsorptionModel = .piecewiseLinear
     public var recommendationInsulinType: FixtureInsulinType = .novolog
     public var recommendationType: DoseRecommendationType = .automaticBolus
@@ -64,6 +65,7 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         maxBolus: Double,
         maxBasalRate: Double,
         useIntegralRetrospectiveCorrection: Bool = false,
+        useMidAbsorptionISF: Bool = false,
         includePositiveVelocityAndRC: Bool = true,
         carbAbsorptionModel: CarbAbsorptionModel = .piecewiseLinear,
         recommendationInsulinType: FixtureInsulinType,
@@ -83,6 +85,7 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         self.maxBasalRate = maxBasalRate
         self.useIntegralRetrospectiveCorrection = useIntegralRetrospectiveCorrection
         self.includePositiveVelocityAndRC = includePositiveVelocityAndRC
+        self.useMidAbsorptionISF = useMidAbsorptionISF
         self.carbAbsorptionModel = carbAbsorptionModel
         self.recommendationInsulinType = recommendationInsulinType
         self.recommendationType = recommendationType
@@ -117,6 +120,7 @@ extension AlgorithmInputFixture: Codable {
         self.maxBasalRate = try container.decode(Double.self, forKey: .maxBasalRate)
         self.useIntegralRetrospectiveCorrection = try container.decodeIfPresent(Bool.self, forKey: .useIntegralRetrospectiveCorrection) ?? false
         self.includePositiveVelocityAndRC = try container.decodeIfPresent(Bool.self, forKey: .includePositiveVelocityAndRC) ?? true
+        self.useMidAbsorptionISF = try container.decodeIfPresent(Bool.self, forKey: .useMidAbsorptionISF) ?? false
 
         if let rawRecommendationInsulinType = try container.decodeIfPresent(String.self, forKey: .recommendationInsulinType) {
             guard let decodedRecommendationInsulinType = FixtureInsulinType(rawValue: rawRecommendationInsulinType) else {
@@ -135,6 +139,9 @@ extension AlgorithmInputFixture: Codable {
         } else {
             self.recommendationType = .automaticBolus
         }
+
+        self.automaticBolusApplicationFactor = try container.decodeIfPresent(Double.self, forKey: .automaticBolusApplicationFactor)
+
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -164,9 +171,10 @@ extension AlgorithmInputFixture: Codable {
         if !includePositiveVelocityAndRC {
             try container.encode(includePositiveVelocityAndRC, forKey: .includePositiveVelocityAndRC)
         }
+        try container.encode(useMidAbsorptionISF, forKey: .useMidAbsorptionISF)
         try container.encode(recommendationInsulinType.rawValue, forKey: .recommendationInsulinType)
         try container.encode(recommendationType.rawValue, forKey: .recommendationType)
-
+        try container.encode(automaticBolusApplicationFactor, forKey: .automaticBolusApplicationFactor)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -183,8 +191,10 @@ extension AlgorithmInputFixture: Codable {
         case maxBasalRate
         case useIntegralRetrospectiveCorrection
         case includePositiveVelocityAndRC
+        case useMidAbsorptionISF
         case recommendationInsulinType
         case recommendationType
+        case automaticBolusApplicationFactor
     }
 }
 
