@@ -259,9 +259,7 @@ final class LoopAlgorithmTests: XCTestCase {
         let output = LoopAlgorithm.run(input: input)
 
         // Should recommend bolus to cover meal
-        XCTAssertEqual(
-            output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 269,
-            accuracy: 0.1)
+        XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 269, accuracy: 0.1)
         XCTAssertEqual(output.recommendation!.manual!.amount, 2.16, accuracy: 0.01)
 
         // Now check forecast if bolus recommendation is accepted and delivered.
@@ -277,12 +275,10 @@ final class LoopAlgorithmTests: XCTestCase {
         let output2 = LoopAlgorithm.run(input: input)
 
         // 150 mg/dL is the middle of the target range
-        XCTAssertEqual(
-            output2.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 150,
-            accuracy: 0.1)
+        XCTAssertEqual(output2.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 150, accuracy: 0.1)
     }
 
-    func testMidAborptionISFFlag() {
+    func testMidAbsorptionISFFlag() {
         let now = ISO8601DateFormatter().date(from: "2024-01-03T00:00:00+0000")!
         var input = AlgorithmInputFixture.mock(for: now)
 
