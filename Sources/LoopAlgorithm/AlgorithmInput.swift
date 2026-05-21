@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import HealthKit
 
 
 public protocol AlgorithmInput {
@@ -20,11 +19,12 @@ public protocol AlgorithmInput {
     var doses: [InsulinDoseType] { get }
     var carbEntries: [CarbType] { get }
     var basal: [AbsoluteScheduleValue<Double>] { get }
-    var sensitivity: [AbsoluteScheduleValue<HKQuantity>] { get }
+    var sensitivity: [AbsoluteScheduleValue<LoopQuantity>] { get }
     var carbRatio: [AbsoluteScheduleValue<Double>] { get }
     var target: GlucoseRangeTimeline { get }
-    var suspendThreshold: HKQuantity? { get }
+    var suspendThreshold: LoopQuantity? { get }
     var maxBolus: Double { get }
+    var maxActiveInsulinMultiplier: Double? { get }  // Defaults to 2 (2x maxBolus)
     var maxBasalRate: Double { get }
     var useIntegralRetrospectiveCorrection: Bool { get }
     var includePositiveVelocityAndRC: Bool { get }
@@ -32,7 +32,6 @@ public protocol AlgorithmInput {
     var carbAbsorptionModel: CarbAbsorptionModel { get }
     var recommendationInsulinModel: InsulinModel { get }
     var recommendationType: DoseRecommendationType { get }
-    var automaticBolusApplicationFactor: Double? { get }
+    var automaticBolusApplicationFactor: Double? { get } // Defaults to 0.4
+    var gradualTransitionsThreshold: Double? { get }
 }
-
-

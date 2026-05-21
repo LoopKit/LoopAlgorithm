@@ -7,7 +7,6 @@
 //
 
 import XCTest
-import HealthKit
 @testable import LoopAlgorithm
 
 class InsulinMathTests: XCTestCase {
@@ -28,18 +27,12 @@ class InsulinMathTests: XCTestCase {
         print("\n\n")
     }
 
-
-    public func loadFixture<T>(_ resourceName: String) -> T {
-        let url = Bundle.module.url(forResource: resourceName, withExtension: "json", subdirectory: "Fixtures")!
-        return try! JSONSerialization.jsonObject(with: Data(contentsOf: url), options: []) as! T
-    }
-
     func loadGlucoseEffectFixture(_ resourceName: String) -> [GlucoseEffect] {
         let fixture: [JSONDictionary] = loadFixture(resourceName)
         let dateFormatter = ISO8601DateFormatter.localTimeDate(timeZone: fixtureTimeZone)
 
         return fixture.map {
-            return GlucoseEffect(startDate: dateFormatter.date(from: $0["date"] as! String)!, quantity: HKQuantity(unit: HKUnit(from: $0["unit"] as! String), doubleValue:$0["amount"] as! Double))
+            return GlucoseEffect(startDate: dateFormatter.date(from: $0["date"] as! String)!, quantity: LoopQuantity(unit: LoopUnit(from: $0["unit"] as! String), doubleValue:$0["amount"] as! Double))
         }
     }
 
@@ -74,11 +67,11 @@ class InsulinMathTests: XCTestCase {
 
         let output = loadGlucoseEffectFixture("effect_from_bolus_output")
 
-        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+        let sensitivity: [AbsoluteScheduleValue<LoopQuantity>] = [
             AbsoluteScheduleValue(
                 startDate: startDate,
                 endDate: startDate.addingTimeInterval(InsulinMath.longestInsulinActivityDuration),
-                value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
+                value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
             )
         ]
 
@@ -105,8 +98,8 @@ class InsulinMathTests: XCTestCase {
             BasalRelativeDose(type: .bolus, startDate: t(.hours(2)), endDate: t(.hours(2.1)), volume: 5)
         ]
 
-        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
-            AbsoluteScheduleValue(startDate: t(.hours(1)), endDate: t(.hours(8)), value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 50))
+        let sensitivity: [AbsoluteScheduleValue<LoopQuantity>] = [
+            AbsoluteScheduleValue(startDate: t(.hours(1)), endDate: t(.hours(8)), value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 50))
         ]
 
         let effects = doses.glucoseEffects(insulinSensitivityHistory: sensitivity)
@@ -124,8 +117,8 @@ class InsulinMathTests: XCTestCase {
             BasalRelativeDose(type: .bolus, startDate: t(.hours(2)), endDate: t(.hours(2.1)), volume: 5)
         ]
 
-        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
-            AbsoluteScheduleValue(startDate: t(.hours(1)), endDate: t(.hours(9)), value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 50))
+        let sensitivity: [AbsoluteScheduleValue<LoopQuantity>] = [
+            AbsoluteScheduleValue(startDate: t(.hours(1)), endDate: t(.hours(9)), value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 50))
         ]
 
         let effects = doses.glucoseEffectsMidAbsorptionISF(insulinSensitivityHistory: sensitivity)
@@ -149,11 +142,11 @@ class InsulinMathTests: XCTestCase {
 
         let output = loadGlucoseEffectFixture("effect_from_bolus_output")
 
-        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+        let sensitivity: [AbsoluteScheduleValue<LoopQuantity>] = [
             AbsoluteScheduleValue(
                 startDate: startDate,
                 endDate: startDate.addingTimeInterval(InsulinMath.longestInsulinActivityDuration),
-                value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
+                value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
             )
         ]
 
@@ -189,11 +182,11 @@ class InsulinMathTests: XCTestCase {
 
         let output = loadGlucoseEffectFixture("effect_from_basal_output")
 
-        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+        let sensitivity: [AbsoluteScheduleValue<LoopQuantity>] = [
             AbsoluteScheduleValue(
                 startDate: startDate,
                 endDate: startDate.addingTimeInterval(InsulinMath.longestInsulinActivityDuration),
-                value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
+                value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
             )
         ]
 
@@ -207,7 +200,7 @@ class InsulinMathTests: XCTestCase {
 
         for (expected, calculated) in zip(output, effects) {
             XCTAssertEqual(expected.startDate, calculated.startDate)
-            XCTAssertEqual(expected.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), accuracy: 1.0, String(describing: expected.startDate))
+            XCTAssertEqual(expected.quantity.doubleValue(for: LoopUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: LoopUnit.milligramsPerDeciliter), accuracy: 1.0, String(describing: expected.startDate))
         }
     }
 
@@ -216,11 +209,11 @@ class InsulinMathTests: XCTestCase {
 
         let startDate = dateFormatter.date(from: "2015-07-13T12:00:00")!
 
-        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+        let sensitivity: [AbsoluteScheduleValue<LoopQuantity>] = [
             AbsoluteScheduleValue(
                 startDate: startDate,
                 endDate: startDate.addingTimeInterval(InsulinMath.longestInsulinActivityDuration),
-                value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
+                value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
             )
         ]
 
@@ -236,11 +229,11 @@ class InsulinMathTests: XCTestCase {
         let startDate = input.last!.startDate
         let endDate = input.first!.endDate
 
-        let sensitivity: [AbsoluteScheduleValue<HKQuantity>] = [
+        let sensitivity: [AbsoluteScheduleValue<LoopQuantity>] = [
             AbsoluteScheduleValue(
                 startDate: startDate,
                 endDate: endDate.addingTimeInterval(InsulinMath.longestInsulinActivityDuration),
-                value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
+                value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 40)
             )
         ]
 
@@ -285,7 +278,7 @@ class InsulinMathTests: XCTestCase {
 
         for (expected, calculated) in zip(output, effects) {
             XCTAssertEqual(expected.startDate, calculated.startDate)
-            XCTAssertEqual(expected.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: HKUnit.milligramsPerDeciliter), accuracy: 3.0)
+            XCTAssertEqual(expected.quantity.doubleValue(for: LoopUnit.milligramsPerDeciliter), calculated.quantity.doubleValue(for: LoopUnit.milligramsPerDeciliter), accuracy: 3.0)
         }
     }
 

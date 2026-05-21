@@ -5,14 +5,25 @@
 //  Copyright © 2016 Nathan Racklyeft. All rights reserved.
 //
 
-import HealthKit
-import CoreData
+import Foundation
 
 public struct FixtureCarbEntry: CarbEntry {
     public var absorptionTime: TimeInterval?
     public var startDate: Date
-    public var quantity: HKQuantity
+    public var quantity: LoopQuantity
     public var foodType: String?
+
+    public init(
+        absorptionTime: TimeInterval? = nil,
+        startDate: Date,
+        quantity: LoopQuantity,
+        foodType: String? = nil
+    ) {
+        self.absorptionTime = absorptionTime
+        self.startDate = startDate
+        self.quantity = quantity
+        self.foodType = foodType
+    }
 }
 
 extension FixtureCarbEntry: Codable {
@@ -21,7 +32,7 @@ extension FixtureCarbEntry: Codable {
         self.init(
             absorptionTime: try container.decodeIfPresent(TimeInterval.self, forKey: .absorptionTime),
             startDate: try container.decode(Date.self, forKey: .date),
-            quantity: HKQuantity(unit: .gram(), doubleValue: try container.decode(Double.self, forKey: .grams))
+            quantity: LoopQuantity(unit: .gram, doubleValue: try container.decode(Double.self, forKey: .grams))
         )
     }
 
@@ -29,7 +40,7 @@ extension FixtureCarbEntry: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(absorptionTime, forKey: .absorptionTime)
         try container.encode(startDate, forKey: .date)
-        try container.encode(quantity.doubleValue(for: .gram()), forKey: .grams)
+        try container.encode(quantity.doubleValue(for: .gram), forKey: .grams)
     }
 
     private enum CodingKeys: String, CodingKey {

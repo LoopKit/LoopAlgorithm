@@ -11,6 +11,20 @@ import XCTest
 
 final class LoopAlgorithmTests: XCTestCase {
 
+    private func sample(at date: Date,
+                        glucose mgdL: Double,
+                        provenance: String = "test",
+                        displayOnly: Bool = false) -> FixtureGlucoseSample {
+        FixtureGlucoseSample(
+            provenanceIdentifier: provenance,
+            startDate: date,
+            quantity: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: mgdL),
+            isDisplayOnly: displayOnly,
+            wasUserEntered: false
+        )
+    }
+
+
     func loadScenario(_ name: String) -> (input: AlgorithmInputFixture, recommendation: LoopAlgorithmDoseRecommendation) {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -23,15 +37,6 @@ final class LoopAlgorithmTests: XCTestCase {
         return (input: input, recommendation: recommendation)
     }
 
-    func testSuspend() throws {
-
-        let (input, recommendation) = loadScenario("suspend")
-
-        let output = LoopAlgorithm.run(input: input)
-
-        XCTAssertEqual(output.recommendation, recommendation)
-    }
-
     func loadPredictedGlucoseFixture(_ name: String) -> [PredictedGlucoseValue] {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -40,7 +45,16 @@ final class LoopAlgorithmTests: XCTestCase {
         return try! decoder.decode([PredictedGlucoseValue].self, from: try! Data(contentsOf: url))
     }
 
-    func testCarbsWithSensitivityChange() throws {
+    func testSuspendScenario() throws {
+
+        let (input, recommendation) = loadScenario("suspend")
+
+        let output = LoopAlgorithm.run(input: input)
+
+        XCTAssertEqual(output.recommendation, recommendation)
+    }
+
+    func testCarbsWithSensitivityChangeScenario() throws {
 
         // This test computes a dose with a future carb entry
         // Between the time of dose and the startTime of the carb
@@ -62,7 +76,7 @@ final class LoopAlgorithmTests: XCTestCase {
         let output = LoopAlgorithm.run(input: input)
 
         XCTAssertEqual(output.activeCarbs, 50)
-        XCTAssertEqual(output.recommendation!.manual!.amount, 5.83, accuracy: 0.01)
+        XCTAssertEqual(output.recommendation!.manual!.amount, 5.86, accuracy: 0.01)
     }
 
 
@@ -98,9 +112,10 @@ final class LoopAlgorithmTests: XCTestCase {
         XCTAssertEqual(outputA.effects.insulin.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
         XCTAssertEqual(outputB.effects.insulin.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
 
-        XCTAssertEqual(outputA.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 165)
-        XCTAssertEqual(outputB.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 165)
+        XCTAssertEqual(outputA.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter) ?? 0, 165, accuracy: 0.05)
+        XCTAssertEqual(outputB.effects.retrospectiveCorrection.last?.quantity.doubleValue(for: .milligramsPerDeciliter) ?? 0, 165, accuracy: 0.05)
 
+        // These tests fail, because the momentum effect is *not* time independent yet.
         // Even though all the input data is the same (just shifted in time), momentum effect varies in relation to how offset
         // the glucose samples are from the simulation timeline (at exact 5 minute intervals from the top of the hour)
 //        XCTAssertEqual(outputA.effects.momentum.last?.quantity.doubleValue(for: .milligramsPerDeciliter), 0.0)
@@ -136,16 +151,16 @@ final class LoopAlgorithmTests: XCTestCase {
         let output = LoopAlgorithm.run(input: input)
 
         let carbStatus = output.effects.carbStatus.first!
-        XCTAssertEqual(carbStatus.absorption!.observedProgress.doubleValue(for: .percent()), 0.36, accuracy: 0.01)
+        XCTAssertEqual(carbStatus.absorption!.observedProgress.doubleValue(for: .percent), 0.36, accuracy: 0.01)
 
         XCTAssert(carbStatus.absorption!.isActive)
 
         let basalAdjustment = output.recommendation!.automatic!.basalAdjustment
 
-        XCTAssertEqual(basalAdjustment!.unitsPerHour, 5.83, accuracy: 0.01)
+        XCTAssertEqual(basalAdjustment.unitsPerHour, 5.83, accuracy: 0.01)
     }
 
-    func testLiveCapture() {
+    func testLiveCaptureScenario() {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
@@ -175,7 +190,95 @@ final class LoopAlgorithmTests: XCTestCase {
         }
     }
 
-    func testMidAborptionISFFlag() {
+    func testSpuriousReadingDisablesRCAndMomentum() {
+
+        let base = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
+
+        var input = AlgorithmInputFixture.mock(for: base.addingTimeInterval(.minutes(30)))
+
+        input.glucoseHistory = [
+            sample(at: base,                     glucose: 100),
+            sample(at: base + .minutes(5),       glucose: 115),
+            sample(at: base + .minutes(10),      glucose: 125),
+            sample(at: base + .minutes(15),      glucose: 179), // +45 jump
+            sample(at: base + .minutes(20),      glucose: 148),
+            sample(at: base + .minutes(25),      glucose: 158),
+            sample(at: base + .minutes(30),      glucose: 168)
+        ]
+
+        // With a spurious reading over the gradualTransitionsThreshold of 40 mg/dL, momentum and rc are turned off, and the forecast is lower.
+        var output = LoopAlgorithm.run(input: input)
+        XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 164.5, accuracy: 0.1)
+
+        // With the threshold set high, our spurious reading is still considered gradual, and RC and momentum will be used, resulting in a higher forecast.
+        input.gradualTransitionsThreshold = 60
+        output = LoopAlgorithm.run(input: input)
+        XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 216, accuracy: 0.1)
+
+    }
+
+
+    func testMealBolusScenario() {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let url = Bundle.module.url(forResource: "meal-bolus-isf", withExtension: "json", subdirectory: "Fixtures")!
+        var input = try! decoder.decode(AlgorithmInputFixture.self, from: try! Data(contentsOf: url))
+
+        let output = LoopAlgorithm.run(input: input)
+
+        // Should recommend bolus to cover meal
+        XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 274.14, accuracy: 0.1)
+        XCTAssertEqual(output.recommendation!.manual!.amount, 1.91, accuracy: 0.01)
+
+        // Now check forecast if bolus recommendation is accepted and delivered.
+        input.doses.append(
+            .init(
+                deliveryType: .bolus,
+                startDate: input.predictionStart,
+                endDate: input.predictionStart.addingTimeInterval(30),
+                volume: output.recommendation!.manual!.amount
+            )
+        )
+
+        let output2 = LoopAlgorithm.run(input: input)
+
+        // 150 mg/dL is the middle of the target range
+        XCTAssertEqual(output2.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 150, accuracy: 0.1)
+    }
+
+    func testMealBolusNoMidAbsorptionISFScenario() {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let url = Bundle.module.url(
+            forResource: "meal-bolus-no-isf", withExtension: "json", subdirectory: "Fixtures")!
+        var input = try! decoder.decode(
+            AlgorithmInputFixture.self, from: try! Data(contentsOf: url))
+
+        let output = LoopAlgorithm.run(input: input)
+
+        // Should recommend bolus to cover meal
+        XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 269.15, accuracy: 0.1)
+        XCTAssertEqual(output.recommendation!.manual!.amount, 2.16, accuracy: 0.01)
+
+        // Now check forecast if bolus recommendation is accepted and delivered.
+        input.doses.append(
+            .init(
+                deliveryType: .bolus,
+                startDate: input.predictionStart,
+                endDate: input.predictionStart.addingTimeInterval(30),
+                volume: output.recommendation!.manual!.amount
+            )
+        )
+
+        let output2 = LoopAlgorithm.run(input: input)
+
+        // 150 mg/dL is the middle of the target range
+        XCTAssertEqual(output2.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 150, accuracy: 0.1)
+    }
+
+    func testMidAbsorptionISFFlag() {
         let now = ISO8601DateFormatter().date(from: "2024-01-03T00:00:00+0000")!
         var input = AlgorithmInputFixture.mock(for: now)
 
@@ -226,7 +329,7 @@ final class LoopAlgorithmTests: XCTestCase {
         var recommendedBolus = output.recommendation!.automatic?.bolusUnits
         var activeInsulin = output.activeInsulin!
         XCTAssertEqual(activeInsulin, 8.0)
-        XCTAssertEqual(recommendedBolus!, 1.66, accuracy: 0.01)
+        XCTAssertEqual(recommendedBolus!, 1.69, accuracy: 0.01)
 
         // Now try with maxBolus of 4; should not recommend any more insulin, as we're at our max iob
         input.maxBolus = 4
@@ -258,7 +361,7 @@ final class LoopAlgorithmTests: XCTestCase {
         // Max activeInsulin = 2 x maxBolus = 16U
         input.maxBolus = 8
         var output = LoopAlgorithm.run(input: input)
-        var recommendedRate = output.recommendation!.automatic!.basalAdjustment!.unitsPerHour
+        var recommendedRate = output.recommendation!.automatic!.basalAdjustment.unitsPerHour
         var activeInsulin = output.activeInsulin!
         XCTAssertEqual(activeInsulin, 8.0)
         XCTAssertEqual(recommendedRate, 8.0, accuracy: 0.01)
@@ -266,7 +369,7 @@ final class LoopAlgorithmTests: XCTestCase {
         // Now try with maxBolus of 4; should only recommend scheduled basal (1U/hr), as we're at our max iob
         input.maxBolus = 4
         output = LoopAlgorithm.run(input: input)
-        recommendedRate = output.recommendation!.automatic!.basalAdjustment!.unitsPerHour
+        recommendedRate = output.recommendation!.automatic!.basalAdjustment.unitsPerHour
         activeInsulin = output.activeInsulin!
         XCTAssertEqual(activeInsulin, 8.0)
         XCTAssertEqual(recommendedRate, 1.0, accuracy: 0.01)
@@ -294,12 +397,12 @@ final class LoopAlgorithmTests: XCTestCase {
         // Without mid-absorption ISF
         input.useMidAbsorptionISF = false
         var output = LoopAlgorithm.run(input: input)
-        XCTAssertEqual(2.58, output.recommendation!.manual!.amount, accuracy: 0.01)
+        XCTAssertEqual(2.73, output.recommendation!.manual!.amount, accuracy: 0.01)
 
         // With mid-absorption ISF
         input.useMidAbsorptionISF = true
         output = LoopAlgorithm.run(input: input)
-        XCTAssertEqual(1.55, output.recommendation!.manual!.amount, accuracy: 0.01)
+        XCTAssertEqual(1.49, output.recommendation!.manual!.amount, accuracy: 0.01)
     }
 
     func testIncompleteISFTimelineDetected() {
@@ -406,4 +509,53 @@ final class LoopAlgorithmTests: XCTestCase {
         }
     }
 
+    func testEnactingRecommendation() throws {
+        let date = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
+        var input = AlgorithmInputFixture.mock(for: date)
+
+        let now = input.predictionStart
+
+        // Insulin was suspended for a while
+        input.doses = [
+            FixtureInsulinDose(
+                deliveryType: .basal,
+                startDate: now.addingTimeInterval(-.hours(2)),
+                endDate: now.addingTimeInterval(-.minutes(5)),
+                volume: 0)
+        ]
+
+        // Rising BG
+        input.glucoseHistory = [
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-15)), quantity: .glucose(105)),
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-10)), quantity: .glucose(110)),
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-5)), quantity: .glucose(115)),
+            FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-0)), quantity: .glucose(120)),
+        ]
+
+        var output = LoopAlgorithm.run(input: input)
+
+        let basalAdjustment = output.recommendation!.automatic!.basalAdjustment
+        XCTAssertEqual(basalAdjustment.unitsPerHour, 4.94, accuracy: 0.01)
+
+        input.doses.append(
+            FixtureInsulinDose(
+                deliveryType: .basal,
+                startDate: now,
+                endDate: now.addingTimeInterval(.minutes(30)),
+                volume: basalAdjustment.unitsPerHour / 2 // 4.94 U/hr = 2.47 U delivery over 30m
+            )
+        )
+
+        // 30 seconds later
+        input.predictionStart = input.predictionStart.addingTimeInterval(30)
+
+        // Add more time to insulin sensitivity timeline to account for running temp basal
+        input.sensitivity[0].endDate = input.sensitivity[0].endDate.addingTimeInterval(.hours(1))
+
+        // Manual recommendation does not cut off doses in progress, like a running temp basal
+        input.recommendationType = .manualBolus
+
+        output = LoopAlgorithm.run(input: input)
+        XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 105, accuracy: 0.5)
+    }
 }

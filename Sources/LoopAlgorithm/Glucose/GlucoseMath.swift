@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import HealthKit
 
 public struct GlucoseMath {
     public static let momentumDataInterval: TimeInterval = .minutes(15)
@@ -62,7 +61,7 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
     /// - Parameters:
     ///   - interval: The interval between readings, on average, used to determine if we have a contiguous set of values
     /// - Returns: True if the samples are continuous
-    public func isContinuous(within interval: TimeInterval = TimeInterval(5 * 60)) -> Bool {
+    func isContinuous(within interval: TimeInterval = TimeInterval(minutes: 5)) -> Bool {
         if  let first = first,
             let last = last,
             // Ensure that the entries are contiguous
@@ -72,6 +71,34 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
         }
 
         return false
+    }
+
+    /// Whether the collection has gradual transitions (no large glucose jumps between consecutive readings)
+    /// 
+    /// - Parameters:
+    ///   - gradualTransitionThreshold: Maximum allowed difference between consecutive readings in mg/dL (default 40.0)
+    /// - Returns: True if all consecutive differences are within the threshold
+    public func hasGradualTransitions(gradualTransitionThreshold: Double = 40.0) -> Bool {
+        guard count > 1 else {
+            return false  // A single point could be a spike and should not be used for momentum calculation
+        }
+
+        // Check glucose value continuity (no large transitions)
+        let unit = LoopUnit.milligramsPerDeciliter
+        for i in 0..<(count - 1) {
+            let current = self[self.index(self.startIndex, offsetBy: i)]
+            let next = self[self.index(self.startIndex, offsetBy: i + 1)]
+
+            let currentValue = current.quantity.doubleValue(for: unit)
+            let nextValue = next.quantity.doubleValue(for: unit)
+            let difference = abs(nextValue - currentValue)
+
+            if difference > gradualTransitionThreshold {
+                return false
+            }
+        }
+
+        return true
     }
 
     /// Calculates the short-term predicted momentum effect using linear regression
@@ -84,14 +111,14 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
     public func linearMomentumEffect(
         duration: TimeInterval = GlucoseMath.momentumDuration,
         delta: TimeInterval = GlucoseMath.defaultDelta,
-        velocityMaximum: HKQuantity? = nil
+        velocityMaximum: LoopQuantity? = nil
     ) -> [GlucoseEffect] {
 
-        let velocityMax = velocityMaximum ?? HKQuantity(unit: HKUnit.milligramsPerDeciliter.unitDivided(by: .minute()), doubleValue: 4.0)
+        let velocityMax = velocityMaximum ?? LoopQuantity(unit: .milligramsPerDeciliterPerMinute, doubleValue: 4.0)
 
         guard
             self.count > 2,  // Linear regression isn't much use without 3 or more entries.
-            isContinuous() && !containsCalibrations() && hasSingleProvenance,
+            hasGradualTransitions() && isContinuous() && !containsCalibrations() && hasSingleProvenance,
             let firstSample = self.first,
             let lastSample = self.last,
             let (startDate, endDate) = LoopMath.simulationDateRangeForSamples([lastSample], duration: duration, delta: delta)
@@ -100,7 +127,7 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
         }
 
         /// Choose a unit to use during raw value calculation
-        let unit = HKUnit.milligramsPerDeciliter
+        let unit = LoopUnit.milligramsPerDeciliter
 
         let (slope: slope, intercept: _) = self.map { (
             x: $0.startDate.timeIntervalSince(firstSample.startDate),
@@ -111,14 +138,14 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
             return []
         }
 
-        let limitedSlope = Swift.min(slope, velocityMax.doubleValue(for: unit.unitDivided(by: .second())))
+        let limitedSlope = Swift.min(slope, velocityMax.doubleValue(for: .milligramsPerDeciliterPerSecond))
 
         var date = startDate
         var values = [GlucoseEffect]()
 
         repeat {
             let value = Swift.max(0, date.timeIntervalSince(lastSample.startDate)) * limitedSlope
-            let momentumEffect = GlucoseEffect(startDate: date, quantity: HKQuantity(unit: unit, doubleValue: value))
+            let momentumEffect = GlucoseEffect(startDate: date, quantity: LoopQuantity(unit: unit, doubleValue: value))
 
             values.append(momentumEffect)
             date = date.addingTimeInterval(delta)
@@ -149,7 +176,7 @@ extension Collection where Element: GlucoseSampleValue, Index == Int {
     /// - Parameter effects: Glucose effects to be countered, in chronological order
     /// - Returns: An array of velocities describing the change in glucose samples compared to the specified effects
     public func counteractionEffects(to effects: [GlucoseEffect]) -> [GlucoseEffectVelocity] {
-        let mgdL = HKUnit.milligramsPerDeciliter
+        let mgdL = LoopUnit.milligramsPerDeciliter
         let velocityUnit = GlucoseEffectVelocity.perSecondUnit
         var velocities = [GlucoseEffectVelocity]()
 
@@ -219,7 +246,7 @@ extension Collection where Element: GlucoseSampleValue, Index == Int {
             let effectChange = endEffectValue - startEffectValue
             let discrepancy = glucoseChange - effectChange
 
-            let averageVelocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / timeInterval)
+            let averageVelocity = LoopQuantity(unit: velocityUnit, doubleValue: discrepancy / timeInterval)
             let effect = GlucoseEffectVelocity(startDate: startGlucose.startDate, endDate: endGlucose.startDate, quantity: averageVelocity)
 
             velocities.append(effect)

@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import HealthKit
 
 public enum AlgorithmInputFixtureDecodingError: Error {
     case invalidDoseRecommendationType
@@ -21,11 +20,12 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var doses: [FixtureInsulinDose]
     public var carbEntries: [FixtureCarbEntry]
     public var basal: [AbsoluteScheduleValue<Double>]
-    public var sensitivity: [AbsoluteScheduleValue<HKQuantity>]
+    public var sensitivity: [AbsoluteScheduleValue<LoopQuantity>]
     public var carbRatio: [AbsoluteScheduleValue<Double>]
     public var target: GlucoseRangeTimeline
-    public var suspendThreshold: HKQuantity?
+    public var suspendThreshold: LoopQuantity?
     public var maxBolus: Double
+    public var maxActiveInsulinMultiplier: Double?
     public var maxBasalRate: Double
     public var useIntegralRetrospectiveCorrection: Bool
     public var includePositiveVelocityAndRC: Bool
@@ -34,6 +34,7 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var recommendationInsulinType: FixtureInsulinType = .novolog
     public var recommendationType: DoseRecommendationType = .automaticBolus
     public var automaticBolusApplicationFactor: Double?
+    public var gradualTransitionsThreshold: Double?
 
     public var recommendationInsulinModel: InsulinModel {
         recommendationInsulinType.insulinModel
@@ -58,11 +59,12 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         doses: [FixtureInsulinDose],
         carbEntries: [FixtureCarbEntry],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<HKQuantity>],
+        sensitivity: [AbsoluteScheduleValue<LoopQuantity>],
         carbRatio: [AbsoluteScheduleValue<Double>],
         target: GlucoseRangeTimeline,
-        suspendThreshold: HKQuantity?,
+        suspendThreshold: LoopQuantity?,
         maxBolus: Double,
+        maxActiveInsulinMultiplier: Double? = nil,
         maxBasalRate: Double,
         useIntegralRetrospectiveCorrection: Bool = false,
         useMidAbsorptionISF: Bool = false,
@@ -70,7 +72,8 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         carbAbsorptionModel: CarbAbsorptionModel = .piecewiseLinear,
         recommendationInsulinType: FixtureInsulinType,
         recommendationType: DoseRecommendationType,
-        automaticBolusApplicationFactor: Double? = nil
+        automaticBolusApplicationFactor: Double? = nil,
+        gradualTransitionsThreshold: Double? = 40.0
     ) {
         self.predictionStart = predictionStart
         self.glucoseHistory = glucoseHistory
@@ -82,6 +85,7 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         self.target = target
         self.suspendThreshold = suspendThreshold
         self.maxBolus = maxBolus
+        self.maxActiveInsulinMultiplier = maxActiveInsulinMultiplier
         self.maxBasalRate = maxBasalRate
         self.useIntegralRetrospectiveCorrection = useIntegralRetrospectiveCorrection
         self.includePositiveVelocityAndRC = includePositiveVelocityAndRC
@@ -90,6 +94,7 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         self.recommendationInsulinType = recommendationInsulinType
         self.recommendationType = recommendationType
         self.automaticBolusApplicationFactor = automaticBolusApplicationFactor
+        self.gradualTransitionsThreshold = gradualTransitionsThreshold
     }
 }
 
@@ -104,19 +109,20 @@ extension AlgorithmInputFixture: Codable {
         self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
         let sensitivityMgdl = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
-        self.sensitivity = sensitivityMgdl.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: HKQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.value))}
+        self.sensitivity = sensitivityMgdl.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.value))}
         self.carbRatio = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .carbRatio)
         let targetMgdl = try container.decode([TargetEntry].self, forKey: .target)
         self.target = targetMgdl.map {
-            let lower = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.lowerBound)
-            let upper = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.upperBound)
+            let lower = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.lowerBound)
+            let upper = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.upperBound)
             let range = ClosedRange(uncheckedBounds: (lower: lower, upper: upper))
             return AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: range)
         }
         if let suspendThresholdMgdl = try container.decodeIfPresent(Double.self, forKey: .suspendThreshold) {
-            self.suspendThreshold = HKQuantity(unit: .milligramsPerDeciliter, doubleValue: suspendThresholdMgdl)
+            self.suspendThreshold = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: suspendThresholdMgdl)
         }
         self.maxBolus = try container.decode(Double.self, forKey: .maxBolus)
+        self.maxActiveInsulinMultiplier = try container.decodeIfPresent(Double.self, forKey: .maxActiveInsulinMultiplier)
         self.maxBasalRate = try container.decode(Double.self, forKey: .maxBasalRate)
         self.useIntegralRetrospectiveCorrection = try container.decodeIfPresent(Bool.self, forKey: .useIntegralRetrospectiveCorrection) ?? false
         self.includePositiveVelocityAndRC = try container.decodeIfPresent(Bool.self, forKey: .includePositiveVelocityAndRC) ?? true
@@ -141,6 +147,7 @@ extension AlgorithmInputFixture: Codable {
         }
 
         self.automaticBolusApplicationFactor = try container.decodeIfPresent(Double.self, forKey: .automaticBolusApplicationFactor)
+        self.gradualTransitionsThreshold = try container.decodeIfPresent(Double.self, forKey: .gradualTransitionsThreshold) ?? 40.0
 
     }
 
@@ -164,6 +171,7 @@ extension AlgorithmInputFixture: Codable {
         try container.encode(targetMgdl, forKey: .target)
         try container.encode(suspendThreshold?.doubleValue(for: .milligramsPerDeciliter), forKey: .suspendThreshold)
         try container.encode(maxBolus, forKey: .maxBolus)
+        try container.encode(maxActiveInsulinMultiplier, forKey: .maxActiveInsulinMultiplier)
         try container.encode(maxBasalRate, forKey: .maxBasalRate)
         if useIntegralRetrospectiveCorrection {
             try container.encode(useIntegralRetrospectiveCorrection, forKey: .useIntegralRetrospectiveCorrection)
@@ -175,6 +183,7 @@ extension AlgorithmInputFixture: Codable {
         try container.encode(recommendationInsulinType.rawValue, forKey: .recommendationInsulinType)
         try container.encode(recommendationType.rawValue, forKey: .recommendationType)
         try container.encode(automaticBolusApplicationFactor, forKey: .automaticBolusApplicationFactor)
+        try container.encode(gradualTransitionsThreshold, forKey: .gradualTransitionsThreshold)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -188,6 +197,7 @@ extension AlgorithmInputFixture: Codable {
         case target
         case suspendThreshold
         case maxBolus
+        case maxActiveInsulinMultiplier
         case maxBasalRate
         case useIntegralRetrospectiveCorrection
         case includePositiveVelocityAndRC
@@ -195,6 +205,66 @@ extension AlgorithmInputFixture: Codable {
         case recommendationInsulinType
         case recommendationType
         case automaticBolusApplicationFactor
+        case gradualTransitionsThreshold
     }
 }
 
+extension AlgorithmInputFixture {
+    static public func printFixture(_ input: any AlgorithmInput) {
+        let fixture = AlgorithmInputFixture(
+            predictionStart: input.predictionStart,
+            glucoseHistory: input.glucoseHistory.map(\.asFixtureGlucoseSample),
+            doses: input.doses.map(\.asFixtureInsulinDose),
+            carbEntries: input.carbEntries.map(\.asFixtureCarbEntry),
+            basal: input.basal,
+            sensitivity: input.sensitivity,
+            carbRatio: input.carbRatio,
+            target: input.target,
+            suspendThreshold: input.suspendThreshold,
+            maxBolus: input.maxBolus,
+            maxBasalRate: input.maxBasalRate,
+            useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection,
+            useMidAbsorptionISF: input.useMidAbsorptionISF,
+            includePositiveVelocityAndRC: input.includePositiveVelocityAndRC,
+            carbAbsorptionModel: input.carbAbsorptionModel,
+            recommendationInsulinType: .novolog,
+            recommendationType: input.recommendationType,
+            automaticBolusApplicationFactor: input.automaticBolusApplicationFactor,
+            gradualTransitionsThreshold: input.gradualTransitionsThreshold
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        encoder.dateEncodingStrategy = .iso8601
+
+        do {
+            let encoded = try encoder.encode(fixture)
+            print(String(data: encoded , encoding: .utf8)!)
+        } catch {
+            print("Error encoding fixture: \(error)")
+        }
+    }
+}
+
+extension GlucoseSampleValue {
+    var asFixtureGlucoseSample: FixtureGlucoseSample {
+        return .init(startDate: startDate, quantity: quantity)
+    }
+}
+
+extension InsulinDose {
+    var asFixtureInsulinDose: FixtureInsulinDose {
+        return .init(deliveryType: deliveryType, startDate: startDate, endDate: endDate, volume: volume)
+    }
+}
+
+extension CarbEntry {
+    var asFixtureCarbEntry: FixtureCarbEntry {
+        return FixtureCarbEntry(
+            absorptionTime: absorptionTime,
+            startDate: startDate,
+            quantity: quantity,
+            foodType: nil
+        )
+    }
+}
