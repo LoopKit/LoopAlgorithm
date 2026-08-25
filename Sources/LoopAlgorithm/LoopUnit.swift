@@ -73,18 +73,19 @@ public enum LoopUnit: Sendable, CaseIterable {
              (.milligramsPerDeciliterPerInternationalUnit, .millimolesPerLiterPerInternationalUnit):
             return 1/UnitMolarMassBloodGlucoseDivisible
         case (.milligramsPerDeciliterPerSecond, .millimolesPerLiterPerMinute):
-            return 1/UnitMolarMassBloodGlucoseDivisible / 60
-        case (.milligramsPerDeciliterPerMinute, .millimolesPerLiterPerSecond):
+            // Rate: per-second -> per-minute multiplies by 60 (opposite of a duration conversion)
             return 1/UnitMolarMassBloodGlucoseDivisible * 60
+        case (.milligramsPerDeciliterPerMinute, .millimolesPerLiterPerSecond):
+            return 1/UnitMolarMassBloodGlucoseDivisible / 60
         case (.millimolesPerLiter, .milligramsPerDeciliter),
              (.millimolesPerLiterPerSecond, .milligramsPerDeciliterPerSecond),
              (.millimolesPerLiterPerMinute, .milligramsPerDeciliterPerMinute),
              (.millimolesPerLiterPerInternationalUnit, .milligramsPerDeciliterPerInternationalUnit):
             return UnitMolarMassBloodGlucoseDivisible
         case (.millimolesPerLiterPerSecond, .milligramsPerDeciliterPerMinute):
-            return UnitMolarMassBloodGlucoseDivisible / 60
-        case (.millimolesPerLiterPerMinute, .milligramsPerDeciliterPerSecond):
             return UnitMolarMassBloodGlucoseDivisible * 60
+        case (.millimolesPerLiterPerMinute, .milligramsPerDeciliterPerSecond):
+            return UnitMolarMassBloodGlucoseDivisible / 60
         case (.gram, _),
              (.gramsPerUnit, _),
              (.internationalUnit, _),

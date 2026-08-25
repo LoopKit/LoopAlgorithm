@@ -190,17 +190,44 @@ class LoopUnitTests: XCTestCase {
         
         unit1 = LoopUnit.milligramsPerDeciliterPerMinute
         unit2 = LoopUnit.millimolesPerLiterPerSecond
-        XCTAssertEqual(unit1.conversionFactor(toUnit: unit2), 1/UnitMolarMassBloodGlucoseDivisible * 60)
-        XCTAssertEqual(unit2.conversionFactor(toUnit: unit1), UnitMolarMassBloodGlucoseDivisible / 60)
+        XCTAssertEqual(unit1.conversionFactor(toUnit: unit2), 1/UnitMolarMassBloodGlucoseDivisible / 60)
+        XCTAssertEqual(unit2.conversionFactor(toUnit: unit1), UnitMolarMassBloodGlucoseDivisible * 60)
         
         unit1 = LoopUnit.milligramsPerDeciliterPerSecond
         unit2 = LoopUnit.millimolesPerLiterPerMinute
-        XCTAssertEqual(unit1.conversionFactor(toUnit: unit2), 1/UnitMolarMassBloodGlucoseDivisible / 60)
-        XCTAssertEqual(unit2.conversionFactor(toUnit: unit1), UnitMolarMassBloodGlucoseDivisible * 60)
+        XCTAssertEqual(unit1.conversionFactor(toUnit: unit2), 1/UnitMolarMassBloodGlucoseDivisible * 60)
+        XCTAssertEqual(unit2.conversionFactor(toUnit: unit1), UnitMolarMassBloodGlucoseDivisible / 60)
         
         let quantity1 = LoopQuantity(unit: .millimolesPerLiter, doubleValue: 4)
         let quantity2 = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 72.06235200002165)
         XCTAssertEqual(quantity1, quantity2)
+    }
+
+    /// The conversion table is maintained by hand, so check every pair against HealthKit,
+    /// which does the dimensional analysis for us. This guards against transcription errors
+    /// like the inverted time factor that made mg/dL·s -> mmol/L·min 3600x too small.
+    func testConversionFactorsMatchHealthKit() {
+        for source in LoopUnit.allCases {
+            for target in LoopUnit.allCases {
+                let context = "\(source.unitString) -> \(target.unitString)"
+                let one = HKQuantity(unit: HKUnit(from: source.unitString), doubleValue: 1)
+                let hkTarget = HKUnit(from: target.unitString)
+                let convertible = one.is(compatibleWith: hkTarget)
+
+                guard let factor = source.conversionFactor(toUnit: target) else {
+                    XCTAssertFalse(convertible, "\(context) is convertible in HealthKit but returned nil")
+                    continue
+                }
+
+                guard convertible else {
+                    XCTFail("\(context) returned a factor but is not convertible in HealthKit")
+                    continue
+                }
+
+                let expected = one.doubleValue(for: hkTarget)
+                XCTAssertEqual(factor, expected, accuracy: max(abs(expected) * 1e-12, .ulpOfOne), context)
+            }
+        }
     }
 }
 
