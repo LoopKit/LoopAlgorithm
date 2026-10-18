@@ -74,12 +74,18 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
     var correctionVelocity: LoopQuantity?
     var currentDate: Date = Date()
 
+    /// Experimental weight on the correction while the current discrepancy is positive (rising), set by
+    /// the post-low rise-cut (see `AlgorithmExperiment`). 1.0 is standard IRC.
+    let riseScale: Double
+
     public init(effectDuration: TimeInterval,
                 maxCorrectionVelocity: LoopQuantity? = IntegralRetrospectiveCorrection.defaultMaxCorrectionVelocity,
-                useLegacyDecay: Bool = false) {
+                useLegacyDecay: Bool = false,
+                riseScale: Double = 1.0) {
         self.effectDuration = effectDuration
         self.maxCorrectionVelocity = maxCorrectionVelocity
         self.useLegacyDecay = useLegacyDecay
+        self.riseScale = riseScale
     }
     
     /**
@@ -199,6 +205,9 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
         
         let retrospectionTimeInterval = currentDiscrepancy.endDate.timeIntervalSince(currentDiscrepancy.startDate)
         let discrepancyTime = max(retrospectionTimeInterval, retrospectiveCorrectionGroupingInterval)
+        if riseScale != 1.0 && currentDiscrepancyValue >= 0 {
+            scaledCorrection *= riseScale
+        }
         var velocityValue = scaledCorrection / discrepancyTime
 
         // Bound the correction rate to a settings-free physiological ceiling (see
