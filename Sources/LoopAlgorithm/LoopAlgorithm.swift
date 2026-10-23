@@ -185,7 +185,7 @@ public struct LoopAlgorithm {
         gradualTransitionsThreshold: Double? = 40.0,
         momentumVelocityMaximum: LoopQuantity? = nil,
         emulation: AlgorithmEmulationOptions = AlgorithmEmulationOptions(),
-        experiment: AlgorithmExperiment? = nil
+        experiments: Set<AlgorithmExperiment> = []
     ) -> LoopPrediction<CarbType> where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose {
 
         var prediction: [PredictedGlucoseValue] = []
@@ -260,15 +260,15 @@ public struct LoopAlgorithm {
 
         let rc: RetrospectiveCorrection
 
-        // Experiment (no-op when `experiment` is nil): the post-low rise-cut weights the rising side of
+        // Experiments (no-ops when `experiments` is empty): the post-low rise-cut weights the rising side of
         // retrospective correction while its gate is open.
         var rcRiseScale = 1.0
-        if let cut = ExperimentParameters(experiment: experiment, volatilityBaseline: nil).postLowRiseCut,
+        if let cut = ExperimentParameters(experiments: experiments, volatilityBaseline: nil).postLowRiseCut,
            cut.isActive(glucoseHistory: glucoseHistory) {
             rcRiseScale = cut.riseScale
         }
 
-        if useIntegralRetrospectiveCorrection {
+        if useIntegralRetrospectiveCorrection || experiments.contains(.integralRetrospectiveCorrection) {
             rc = IntegralRetrospectiveCorrection(
                 effectDuration: LoopMath.retrospectiveCorrectionEffectDuration,
                 maxCorrectionVelocity: emulation.disableIRCVelocityCeiling ? nil : IntegralRetrospectiveCorrection.defaultMaxCorrectionVelocity,
@@ -618,6 +618,19 @@ public struct LoopAlgorithm {
         )
     }
 
+    /// The automatic-bolus application factor: the glucose-based factor when that experiment is on (keyed on
+    /// current glucose and the lower correction target in effect now), else the input's constant.
+    static func automaticBolusApplicationFactor(input: any AlgorithmInput, currentGlucose: some GlucoseSampleValue) -> Double {
+        if input.experiments.contains(.glucoseBasedApplicationFactor),
+           let correctionRange = input.target.closestPrior(to: input.predictionStart)?.value
+        {
+            return GlucoseBasedApplicationFactor.factor(
+                glucose: currentGlucose.quantity.doubleValue(for: .milligramsPerDeciliter),
+                lowerTarget: correctionRange.lowerBound.doubleValue(for: .milligramsPerDeciliter))
+        }
+        return input.automaticBolusApplicationFactor ?? defaultBolusPartialApplicationFactor
+    }
+
     // Computes an amount of insulin to correct the given prediction
     public static func insulinCorrection(
         prediction: [PredictedGlucoseValue],
@@ -801,14 +814,14 @@ public struct LoopAlgorithm {
                 carbAbsorptionModel: input.carbAbsorptionModel.model,
                 gradualTransitionsThreshold: input.gradualTransitionsThreshold,
                 emulation: input.emulation ?? AlgorithmEmulationOptions(),
-                experiment: input.experiment
+                experiments: input.experiments
             )
 
-            // Experiment adjustments before dosing (no-ops when `experiment` is nil). The runway reserve
+            // Experiment adjustments before dosing (no-ops when `experiments` is empty). The runway reserve
             // reads the forecast before the volatility band lowers it; its band term is its own.
             let experimentParameters = ExperimentParameters(
-                experiment: input.experiment,
-                volatilityBaseline: input.experiment != nil
+                experiments: input.experiments,
+                volatilityBaseline: input.experiments.contains(.guardAndRunway)
                     ? (input.volatilityBaseline ?? GlucoseVolatility.baseline(input.glucoseHistory)) : nil)
             let volatility: Double? = experimentParameters.needsVolatility ? GlucoseVolatility.sigma5(input.glucoseHistory) : nil
             var runwayShift = 0.0
@@ -872,7 +885,7 @@ public struct LoopAlgorithm {
             case .automaticBolus:
                 let recommendation = recommendAutomaticDose(
                     for: correction,
-                    applicationFactor: input.automaticBolusApplicationFactor ?? defaultBolusPartialApplicationFactor,
+                    applicationFactor: automaticBolusApplicationFactor(input: input, currentGlucose: latestGlucose),
                     neutralBasalRate: scheduledBasalRate,
                     activeInsulin: prediction.activeInsulin!,
                     maxBolus: input.maxBolus,

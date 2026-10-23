@@ -7,12 +7,11 @@
 
 import Foundation
 
-/// An optional algorithm experiment. `nil` (the default everywhere) is standard LoopAlgorithm.
+/// Optional algorithm experiments. The empty set (the default everywhere) is standard LoopAlgorithm.
 ///
-/// There is deliberately one, with no tunable parameters, so that people who choose to try it pool into
-/// one large group whose results can be compared. It is a fixed configuration evaluated in LoopEval
-/// (closed-loop counterfactual replay of real CGM and insulin data, and a simulated cohort, scored against
-/// the standard algorithm swept over insulin needs).
+/// Each experiment is an on/off switch with no tunable parameters, so that people who choose the same
+/// switches pool into one group whose results can be compared. Experiments combine: each acts on its own
+/// part of the algorithm, and a combination is its own group.
 public enum AlgorithmExperiment: String, Codable, CaseIterable, Sendable {
 
     /// LoopEval guard + runway (C20 + C29 + C40). A lows guard, plus a little more correction when there
@@ -32,6 +31,32 @@ public enum AlgorithmExperiment: String, Codable, CaseIterable, Sendable {
     ///   an internal lowering of the correction aim for automatic dosing only: the user's target, the
     ///   manual bolus recommendation and the suspend threshold are unchanged.
     case guardAndRunway
+
+    /// Integral retrospective correction: retrospective correction integrates the recent unexplained
+    /// glucose change instead of projecting only the last 30 minutes. The same as
+    /// `AlgorithmInput.useIntegralRetrospectiveCorrection`; either one enables it.
+    case integralRetrospectiveCorrection
+
+    /// Glucose-based application factor, for automatic-bolus dosing: the share of the correction given
+    /// now rises with current glucose, from 0.2 at the lower correction target + 10 mg/dL to 0.8 at
+    /// 200 mg/dL, instead of a constant. It replaces `AlgorithmInput.automaticBolusApplicationFactor`
+    /// and, through it, the automatic-bolus cap. Temp-basal dosing is unaffected.
+    case glucoseBasedApplicationFactor
+}
+
+/// Loop's glucose-based application factor (`glucoseBasedApplicationFactor`).
+enum GlucoseBasedApplicationFactor {
+    static let minFactor = 0.2
+    static let maxFactor = 0.8
+    static let lowerTargetDelta = 10.0   // mg/dL above the lower correction target where the ramp starts
+    static let rampTop = 200.0           // mg/dL where the factor reaches maxFactor
+
+    /// `glucose` and `lowerTarget` in mg/dL.
+    static func factor(glucose: Double, lowerTarget: Double) -> Double {
+        let rampStart = lowerTarget + lowerTargetDelta
+        let slope = (maxFactor - minFactor) / (rampTop - rampStart)
+        return min(minFactor + max(glucose - rampStart, 0) * slope, maxFactor)
+    }
 }
 
 /// The internal configuration the experiment expands to. Not public: the experiment is fixed.
@@ -45,11 +70,9 @@ struct ExperimentParameters: Equatable {
     var needsVolatility: Bool { volatilityBand != nil || runwayReserve != nil }
 
     /// `volatilityBaseline` is the person's median σ5 (mg/dL per 5 min); only the band uses it.
-    init(experiment: AlgorithmExperiment?, volatilityBaseline: Double?) {
-        switch experiment {
-        case nil:
-            break
-        case .guardAndRunway:
+    /// Integral RC and the glucose-based application factor are switched where they act, not here.
+    init(experiments: Set<AlgorithmExperiment>, volatilityBaseline: Double?) {
+        if experiments.contains(.guardAndRunway) {
             postLowRiseCut = PostLowRiseCut()
             runwayReserve = RunwayReserve()
             if let baseline = volatilityBaseline, baseline.isFinite, baseline > 0 {

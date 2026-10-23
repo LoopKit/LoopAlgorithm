@@ -36,8 +36,8 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var automaticBolusApplicationFactor: Double?
     public var gradualTransitionsThreshold: Double?
     public var emulation: AlgorithmEmulationOptions?
-    /// Optional experiment; absent in existing fixtures, which therefore run standard LoopAlgorithm.
-    public var experiment: AlgorithmExperiment?
+    /// Optional experiments; absent in existing fixtures, which therefore run standard LoopAlgorithm.
+    public var experiments: Set<AlgorithmExperiment> = []
     public var volatilityBaseline: Double?
 
     public var recommendationInsulinModel: InsulinModel {
@@ -155,7 +155,7 @@ extension AlgorithmInputFixture: Codable {
         self.automaticBolusApplicationFactor = try container.decodeIfPresent(Double.self, forKey: .automaticBolusApplicationFactor)
         self.gradualTransitionsThreshold = try container.decodeIfPresent(Double.self, forKey: .gradualTransitionsThreshold) ?? 40.0
         self.emulation = try container.decodeIfPresent(AlgorithmEmulationOptions.self, forKey: .emulation)
-        self.experiment = try container.decodeIfPresent(AlgorithmExperiment.self, forKey: .experiment)
+        self.experiments = Set(try container.decodeIfPresent([AlgorithmExperiment].self, forKey: .experiments) ?? [])
         self.volatilityBaseline = try container.decodeIfPresent(Double.self, forKey: .volatilityBaseline)
     }
 
@@ -195,7 +195,9 @@ extension AlgorithmInputFixture: Codable {
         if let emulation {
             try container.encode(emulation, forKey: .emulation)
         }
-        try container.encodeIfPresent(experiment, forKey: .experiment)
+        if !experiments.isEmpty {
+            try container.encode(experiments.map(\.rawValue).sorted(), forKey: .experiments)
+        }
         try container.encodeIfPresent(volatilityBaseline, forKey: .volatilityBaseline)
     }
 
@@ -220,7 +222,7 @@ extension AlgorithmInputFixture: Codable {
         case automaticBolusApplicationFactor
         case gradualTransitionsThreshold
         case emulation
-        case experiment
+        case experiments
         case volatilityBaseline
     }
 }

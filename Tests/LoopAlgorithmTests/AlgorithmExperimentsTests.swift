@@ -35,8 +35,8 @@ final class AlgorithmExperimentsTests: XCTestCase {
     // MARK: - Default is standard LoopAlgorithm
 
     func testExistingFixturesDecodeWithoutExperiments() {
-        XCTAssertNil(loadScenario("suspend").experiment)
-        XCTAssertNil(loadScenario("carbs_with_isf_change").experiment)
+        XCTAssertTrue(loadScenario("suspend").experiments.isEmpty)
+        XCTAssertTrue(loadScenario("carbs_with_isf_change").experiments.isEmpty)
     }
 
     func testGatedExperimentsAreInertWhenTheirGateIsClosed() {
@@ -47,7 +47,7 @@ final class AlgorithmExperimentsTests: XCTestCase {
         input.recommendationType = .automaticBolus
         input.carbEntries = [FixtureCarbEntry(absorptionTime: .hours(3), startDate: now.addingTimeInterval(.minutes(-30)), quantity: .carbs(30))]
         let standard = LoopAlgorithm.run(input: input)
-        input.experiment = .guardAndRunway
+        input.experiments = [.guardAndRunway]
         input.volatilityBaseline = 5
         assertSameOutput(standard, LoopAlgorithm.run(input: input))
     }
@@ -58,11 +58,11 @@ final class AlgorithmExperimentsTests: XCTestCase {
         let now = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
         var input = AlgorithmInputFixture.mock(for: now)
         let standard = LoopAlgorithm.run(input: input)
-        input.experiment = .guardAndRunway
+        input.experiments = [.guardAndRunway]
         assertSameOutput(standard, LoopAlgorithm.run(input: input))
-        XCTAssertNil(ExperimentParameters(experiment: .guardAndRunway, volatilityBaseline: nil).volatilityBand)
-        XCTAssertNotNil(ExperimentParameters(experiment: .guardAndRunway, volatilityBaseline: nil).postLowRiseCut)
-        XCTAssertNotNil(ExperimentParameters(experiment: .guardAndRunway, volatilityBaseline: nil).runwayReserve)
+        XCTAssertNil(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: nil).volatilityBand)
+        XCTAssertNotNil(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: nil).postLowRiseCut)
+        XCTAssertNotNil(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: nil).runwayReserve)
     }
 
     func testRunwayFillsTheGapsInASparseForecast() {
@@ -82,14 +82,17 @@ final class AlgorithmExperimentsTests: XCTestCase {
     }
 
     func testParameters() {
-        let p = ExperimentParameters(experiment: .guardAndRunway, volatilityBaseline: 5)
+        let p = ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: 5)
         XCTAssertEqual(p.volatilityBand?.gain, 1.0)                                   // min(1, 6.7 / 5)
-        XCTAssertEqual(ExperimentParameters(experiment: .guardAndRunway, volatilityBaseline: 10).volatilityBand!.gain, 0.67, accuracy: 1e-12)
+        XCTAssertEqual(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: 10).volatilityBand!.gain, 0.67, accuracy: 1e-12)
         XCTAssertEqual(p.postLowRiseCut, ExperimentParameters.PostLowRiseCut())
         XCTAssertEqual(p.runwayReserve, ExperimentParameters.RunwayReserve())
         XCTAssertEqual(p.runwayReserve?.fraction, 0.7)
         XCTAssertEqual(p.runwayReserve?.minGlucose, 150)
-        XCTAssertEqual(ExperimentParameters(experiment: nil, volatilityBaseline: 5), ExperimentParameters.none)
+        XCTAssertEqual(ExperimentParameters(experiments: [], volatilityBaseline: 5), ExperimentParameters.none)
+        // Integral RC and the glucose-based factor are switched where they act; they add no parameters here.
+        XCTAssertEqual(ExperimentParameters(experiments: [.integralRetrospectiveCorrection, .glucoseBasedApplicationFactor],
+                                            volatilityBaseline: 5), ExperimentParameters.none)
     }
 
     // MARK: - Retrospective correction gains
@@ -128,7 +131,7 @@ final class AlgorithmExperimentsTests: XCTestCase {
         var input = AlgorithmInputFixture.mock(for: now)
         input.glucoseHistory = glucoseSeries([62, 66, 75, 90, 110, 130], endingAt: now.addingTimeInterval(.minutes(-1)))
         let standard = LoopAlgorithm.run(input: input)
-        input.experiment = .guardAndRunway
+        input.experiments = [.guardAndRunway]
         let cut = LoopAlgorithm.run(input: input)
         XCTAssertLessThan(cut.predictedGlucose.last!.quantity.doubleValue(for: unit),
                           standard.predictedGlucose.last!.quantity.doubleValue(for: unit))
@@ -221,9 +224,9 @@ final class AlgorithmExperimentsTests: XCTestCase {
         // No baseline and under a day of history: no band, so only the runway can act. No low: no post-low cut.
         for type in [DoseRecommendationType.tempBasal, .automaticBolus] {
             input.recommendationType = type
-            input.experiment = nil
+            input.experiments = []
             let standard = LoopAlgorithm.run(input: input)
-            input.experiment = .guardAndRunway
+            input.experiments = [.guardAndRunway]
             let runway = LoopAlgorithm.run(input: input)
             XCTAssertEqual(runway.predictedGlucose.map { $0.quantity.doubleValue(for: unit) },
                            standard.predictedGlucose.map { $0.quantity.doubleValue(for: unit) }, "the forecast is unchanged")
@@ -235,9 +238,9 @@ final class AlgorithmExperimentsTests: XCTestCase {
             }
         }
         input.recommendationType = .manualBolus
-        input.experiment = nil
+        input.experiments = []
         let standard = LoopAlgorithm.run(input: input)
-        input.experiment = .guardAndRunway
+        input.experiments = [.guardAndRunway]
         assertSameOutput(standard, LoopAlgorithm.run(input: input))
     }
 
@@ -257,13 +260,74 @@ final class AlgorithmExperimentsTests: XCTestCase {
 
     func testFixtureRoundTripCarriesTheExperiment() throws {
         var input = loadScenario("suspend")
-        input.experiment = .guardAndRunway
+        input.experiments = [.guardAndRunway]
         input.volatilityBaseline = 4.2
         let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
         let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
         let back = try decoder.decode(AlgorithmInputFixture.self, from: encoder.encode(input))
-        XCTAssertEqual(back.experiment, .guardAndRunway)
+        XCTAssertEqual(back.experiments, [.guardAndRunway])
         XCTAssertEqual(back.volatilityBaseline, 4.2)
-        XCTAssertEqual(AlgorithmExperiment.allCases, [.guardAndRunway])
+        XCTAssertEqual(AlgorithmExperiment.allCases, [.guardAndRunway, .integralRetrospectiveCorrection, .glucoseBasedApplicationFactor])
+    }
+
+    func testFixtureRoundTripCarriesACombination() throws {
+        var input = loadScenario("suspend")
+        input.experiments = [.glucoseBasedApplicationFactor, .guardAndRunway, .integralRetrospectiveCorrection]
+        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601; encoder.outputFormatting = .sortedKeys
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        let data = try encoder.encode(input)
+        XCTAssertEqual(try decoder.decode(AlgorithmInputFixture.self, from: data).experiments, input.experiments)
+        XCTAssertTrue(String(decoding: data, as: UTF8.self)
+            .contains(#""experiments":["glucoseBasedApplicationFactor","guardAndRunway","integralRetrospectiveCorrection"]"#))
+    }
+
+    // MARK: - Integral retrospective correction
+
+    func testIntegralRCExperimentIsTheInputFlag() {
+        for name in ["suspend", "carbs_with_isf_change"] {
+            var flag = loadScenario(name)
+            flag.useIntegralRetrospectiveCorrection = true
+            var experiment = loadScenario(name)
+            experiment.experiments = [.integralRetrospectiveCorrection]
+            assertSameOutput(LoopAlgorithm.run(input: flag), LoopAlgorithm.run(input: experiment))
+            flag.experiments = [.integralRetrospectiveCorrection]   // both: still integral RC, once
+            assertSameOutput(LoopAlgorithm.run(input: flag), LoopAlgorithm.run(input: experiment))
+        }
+    }
+
+    // MARK: - Glucose-based application factor
+
+    func testGlucoseBasedApplicationFactorRamp() {
+        // Lower target 100: the ramp runs 0.2 at 110 to 0.8 at 200.
+        XCTAssertEqual(GlucoseBasedApplicationFactor.factor(glucose: 90, lowerTarget: 100), 0.2, accuracy: 1e-12)
+        XCTAssertEqual(GlucoseBasedApplicationFactor.factor(glucose: 110, lowerTarget: 100), 0.2, accuracy: 1e-12)
+        XCTAssertEqual(GlucoseBasedApplicationFactor.factor(glucose: 155, lowerTarget: 100), 0.5, accuracy: 1e-12)
+        XCTAssertEqual(GlucoseBasedApplicationFactor.factor(glucose: 200, lowerTarget: 100), 0.8, accuracy: 1e-12)
+        XCTAssertEqual(GlucoseBasedApplicationFactor.factor(glucose: 260, lowerTarget: 100), 0.8, accuracy: 1e-12)
+        // Lower target 90: 0.2 at 100, 0.5 at 150.
+        XCTAssertEqual(GlucoseBasedApplicationFactor.factor(glucose: 150, lowerTarget: 90), 0.5, accuracy: 1e-12)
+    }
+
+    func testGlucoseBasedApplicationFactorReplacesTheConstantForAutomaticBolusOnly() {
+        let now = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
+        var input = AlgorithmInputFixture.mock(for: now)
+        input.glucoseHistory = glucoseSeries(Array(repeating: 155, count: 12), endingAt: now.addingTimeInterval(.minutes(-1)))
+        // Mock lower target 100, glucose 155: the factor is 0.5, against the default 0.4.
+        input.recommendationType = .automaticBolus
+        var constant = input
+        constant.automaticBolusApplicationFactor = 0.5
+        input.automaticBolusApplicationFactor = 0.4
+        input.experiments = [.glucoseBasedApplicationFactor]
+        let gbaf = LoopAlgorithm.run(input: input)
+        assertSameOutput(gbaf, LoopAlgorithm.run(input: constant))
+        input.experiments = []
+        XCTAssertGreaterThan(gbaf.recommendation!.automatic!.bolusUnits!, LoopAlgorithm.run(input: input).recommendation!.automatic!.bolusUnits!)
+        for type in [DoseRecommendationType.tempBasal, .manualBolus] {
+            input.recommendationType = type
+            input.experiments = []
+            let standard = LoopAlgorithm.run(input: input)
+            input.experiments = [.glucoseBasedApplicationFactor]
+            assertSameOutput(standard, LoopAlgorithm.run(input: input))
+        }
     }
 }
