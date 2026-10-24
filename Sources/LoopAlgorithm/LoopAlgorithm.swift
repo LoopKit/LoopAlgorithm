@@ -185,7 +185,7 @@ public struct LoopAlgorithm {
         gradualTransitionsThreshold: Double? = 40.0,
         momentumVelocityMaximum: LoopQuantity? = nil,
         emulation: AlgorithmEmulationOptions = AlgorithmEmulationOptions(),
-        experiments: Set<AlgorithmExperiment> = []
+        experiments: Set<ExperimentOption> = []
     ) -> LoopPrediction<CarbType> where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose {
 
         var prediction: [PredictedGlucoseValue] = []

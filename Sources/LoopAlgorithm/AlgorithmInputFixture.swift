@@ -37,7 +37,7 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var gradualTransitionsThreshold: Double?
     public var emulation: AlgorithmEmulationOptions?
     /// Optional experiments; absent in existing fixtures, which therefore run standard LoopAlgorithm.
-    public var experiments: Set<AlgorithmExperiment> = []
+    public var experiments: Set<ExperimentOption> = []
     public var volatilityBaseline: Double?
 
     public var recommendationInsulinModel: InsulinModel {
@@ -155,7 +155,7 @@ extension AlgorithmInputFixture: Codable {
         self.automaticBolusApplicationFactor = try container.decodeIfPresent(Double.self, forKey: .automaticBolusApplicationFactor)
         self.gradualTransitionsThreshold = try container.decodeIfPresent(Double.self, forKey: .gradualTransitionsThreshold) ?? 40.0
         self.emulation = try container.decodeIfPresent(AlgorithmEmulationOptions.self, forKey: .emulation)
-        self.experiments = Set(try container.decodeIfPresent([AlgorithmExperiment].self, forKey: .experiments) ?? [])
+        self.experiments = Set(try container.decodeIfPresent([ExperimentOption].self, forKey: .experiments) ?? [])
         self.volatilityBaseline = try container.decodeIfPresent(Double.self, forKey: .volatilityBaseline)
     }
 

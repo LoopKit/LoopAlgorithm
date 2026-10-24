@@ -75,7 +75,7 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
     var currentDate: Date = Date()
 
     /// Experimental weight on the correction while the current discrepancy is positive (rising), set by
-    /// the post-low rise-cut (see `AlgorithmExperiment`). 1.0 is standard IRC.
+    /// the post-low rise-cut (see `ExperimentOption`). 1.0 is standard IRC.
     let riseScale: Double
 
     public init(effectDuration: TimeInterval,

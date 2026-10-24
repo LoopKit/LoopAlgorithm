@@ -272,7 +272,7 @@ final class AlgorithmExperimentsTests: XCTestCase {
         let back = try decoder.decode(AlgorithmInputFixture.self, from: encoder.encode(input))
         XCTAssertEqual(back.experiments, [.guardAndRunway])
         XCTAssertEqual(back.volatilityBaseline, 4.2)
-        XCTAssertEqual(AlgorithmExperiment.allCases, [.guardAndRunway, .integralRetrospectiveCorrection, .glucoseBasedApplicationFactor])
+        XCTAssertEqual(ExperimentOption.allCases, [.guardAndRunway, .integralRetrospectiveCorrection, .glucoseBasedApplicationFactor])
     }
 
     func testFixtureRoundTripCarriesACombination() throws {
