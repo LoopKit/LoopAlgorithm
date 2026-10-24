@@ -36,6 +36,9 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var automaticBolusApplicationFactor: Double?
     public var gradualTransitionsThreshold: Double?
     public var emulation: AlgorithmEmulationOptions?
+    /// Optional experiments; absent in existing fixtures, which therefore run standard LoopAlgorithm.
+    public var experiments: Set<AlgorithmExperiment> = []
+    public var volatilityBaseline: Double?
 
     public var recommendationInsulinModel: InsulinModel {
         recommendationInsulinType.insulinModel
@@ -152,6 +155,8 @@ extension AlgorithmInputFixture: Codable {
         self.automaticBolusApplicationFactor = try container.decodeIfPresent(Double.self, forKey: .automaticBolusApplicationFactor)
         self.gradualTransitionsThreshold = try container.decodeIfPresent(Double.self, forKey: .gradualTransitionsThreshold) ?? 40.0
         self.emulation = try container.decodeIfPresent(AlgorithmEmulationOptions.self, forKey: .emulation)
+        self.experiments = Set(try container.decodeIfPresent([AlgorithmExperiment].self, forKey: .experiments) ?? [])
+        self.volatilityBaseline = try container.decodeIfPresent(Double.self, forKey: .volatilityBaseline)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -190,6 +195,10 @@ extension AlgorithmInputFixture: Codable {
         if let emulation {
             try container.encode(emulation, forKey: .emulation)
         }
+        if !experiments.isEmpty {
+            try container.encode(experiments.map(\.rawValue).sorted(), forKey: .experiments)
+        }
+        try container.encodeIfPresent(volatilityBaseline, forKey: .volatilityBaseline)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -213,6 +222,8 @@ extension AlgorithmInputFixture: Codable {
         case automaticBolusApplicationFactor
         case gradualTransitionsThreshold
         case emulation
+        case experiments
+        case volatilityBaseline
     }
 }
 
