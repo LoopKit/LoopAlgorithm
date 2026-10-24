@@ -37,7 +37,7 @@ public protocol AlgorithmInput {
     var emulation: AlgorithmEmulationOptions? { get } // Defaults to nil (no emulation)
     /// Optional algorithm experiments; the empty set is standard LoopAlgorithm. Conforming types that do
     /// not provide it get the empty set.
-    var experiments: Set<AlgorithmExperiment> { get }
+    var experiments: Set<ExperimentOption> { get }
     /// The person's volatility baseline for the `guardAndRunway` experiment's volatility band: the median
     /// σ5 (mg/dL per 5 min) over their last four weeks of glucose, from `GlucoseVolatility.baseline(_:)`.
     /// When nil it is computed from `glucoseHistory` if that holds at least a day of readings; otherwise
@@ -47,6 +47,6 @@ public protocol AlgorithmInput {
 
 public extension AlgorithmInput {
     var emulation: AlgorithmEmulationOptions? { nil }
-    var experiments: Set<AlgorithmExperiment> { [] }
+    var experiments: Set<ExperimentOption> { [] }
     var volatilityBaseline: Double? { nil }
 }

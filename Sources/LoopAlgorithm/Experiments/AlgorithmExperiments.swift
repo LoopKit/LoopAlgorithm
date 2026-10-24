@@ -12,7 +12,7 @@ import Foundation
 /// Each experiment is an on/off switch with no tunable parameters, so that people who choose the same
 /// switches pool into one group whose results can be compared. Experiments combine: each acts on its own
 /// part of the algorithm, and a combination is its own group.
-public enum AlgorithmExperiment: String, Codable, CaseIterable, Sendable {
+public enum ExperimentOption: String, Codable, CaseIterable, Sendable {
 
     /// LoopEval guard + runway (C20 + C29 + C40). A lows guard, plus a little more correction when there
     /// is room for it:
@@ -71,7 +71,7 @@ struct ExperimentParameters: Equatable {
 
     /// `volatilityBaseline` is the person's median σ5 (mg/dL per 5 min); only the band uses it.
     /// Integral RC and the glucose-based application factor are switched where they act, not here.
-    init(experiments: Set<AlgorithmExperiment>, volatilityBaseline: Double?) {
+    init(experiments: Set<ExperimentOption>, volatilityBaseline: Double?) {
         if experiments.contains(.guardAndRunway) {
             postLowRiseCut = PostLowRiseCut()
             runwayReserve = RunwayReserve()

@@ -26,7 +26,7 @@ public class StandardRetrospectiveCorrection: RetrospectiveCorrection {
     private let unit = LoopUnit.milligramsPerDeciliter
 
     /// Experimental weight on a positive (rising) discrepancy, set by the post-low rise-cut (see
-    /// `AlgorithmExperiment`). 1.0 is standard RC.
+    /// `ExperimentOption`). 1.0 is standard RC.
     let riseScale: Double
 
     public init(effectDuration: TimeInterval, useLegacyDecay: Bool = false, riseScale: Double = 1.0) {
