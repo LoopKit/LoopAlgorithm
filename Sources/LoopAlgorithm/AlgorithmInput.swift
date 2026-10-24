@@ -41,7 +41,7 @@ public protocol AlgorithmInput {
     /// The person's volatility baseline for the `guardAndRunway` experiment's volatility band: the median
     /// σ5 (mg/dL per 5 min) over their last four weeks of glucose, from `GlucoseVolatility.baseline(_:)`.
     /// When nil it is computed from `glucoseHistory` if that holds at least a day of readings; otherwise
-    /// the experiment runs without the band.
+    /// the band runs at full depth.
     var volatilityBaseline: Double? { get }
 }
 

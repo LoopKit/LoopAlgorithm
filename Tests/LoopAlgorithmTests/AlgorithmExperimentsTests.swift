@@ -52,17 +52,16 @@ final class AlgorithmExperimentsTests: XCTestCase {
         assertSameOutput(standard, LoopAlgorithm.run(input: input))
     }
 
-    func testWithoutABaselineThereIsNoBand() {
-        // No baseline and under a day of glucose: no band. The mock rises 20 mg/dL per 5 min to 160, so the
-        // runway reserve (σ5 = 20) has no room, and there is no low: nothing changes.
-        let now = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
-        var input = AlgorithmInputFixture.mock(for: now)
-        let standard = LoopAlgorithm.run(input: input)
-        input.experiments = [.guardAndRunway]
-        assertSameOutput(standard, LoopAlgorithm.run(input: input))
-        XCTAssertNil(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: nil).volatilityBand)
-        XCTAssertNotNil(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: nil).postLowRiseCut)
-        XCTAssertNotNil(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: nil).runwayReserve)
+    func testWithoutABaselineTheBandIsFullDepth() {
+        // No baseline and under a day of glucose (a new user): the band runs at full depth, and the
+        // baseline only lowers it.
+        let p = ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: nil)
+        XCTAssertEqual(p.volatilityBand?.gain, 1.0)
+        XCTAssertEqual(p.volatilityBand, ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: 5).volatilityBand)
+        XCTAssertNotNil(p.postLowRiseCut)
+        XCTAssertNotNil(p.runwayReserve)
+        XCTAssertEqual(ExperimentParameters(experiments: [.guardAndRunway], volatilityBaseline: .nan).volatilityBand?.gain, 1.0)
+        XCTAssertNil(ExperimentParameters(experiments: [], volatilityBaseline: nil).volatilityBand)
     }
 
     func testRunwayFillsTheGapsInASparseForecast() {
@@ -221,15 +220,19 @@ final class AlgorithmExperimentsTests: XCTestCase {
         let now = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
         var input = AlgorithmInputFixture.mock(for: now)
         input.glucoseHistory = glucoseSeries(Array(repeating: 220, count: 12), endingAt: now.addingTimeInterval(.minutes(-1)))
-        // No baseline and under a day of history: no band, so only the runway can act. No low: no post-low cut.
+        // No baseline: the band runs at full depth and only lowers the forecast, so a rise in automatic dosing
+        // is the runway's. No low: no post-low cut.
         for type in [DoseRecommendationType.tempBasal, .automaticBolus] {
             input.recommendationType = type
             input.experiments = []
             let standard = LoopAlgorithm.run(input: input)
             input.experiments = [.guardAndRunway]
             let runway = LoopAlgorithm.run(input: input)
-            XCTAssertEqual(runway.predictedGlucose.map { $0.quantity.doubleValue(for: unit) },
-                           standard.predictedGlucose.map { $0.quantity.doubleValue(for: unit) }, "the forecast is unchanged")
+            let banded = runway.predictedGlucose.map { $0.quantity.doubleValue(for: unit) }
+            let plain = standard.predictedGlucose.map { $0.quantity.doubleValue(for: unit) }
+            XCTAssertEqual(banded.count, plain.count)
+            XCTAssertEqual(banded.last, plain.last, "eventual glucose is unchanged")
+            XCTAssertTrue(zip(banded, plain).allSatisfy { $0 <= $1 }, "the band only lowers the forecast")
             if type == .tempBasal {
                 XCTAssertGreaterThan(runway.recommendation!.automatic!.basalAdjustment.unitsPerHour,
                                      standard.recommendation!.automatic!.basalAdjustment.unitsPerHour)
@@ -237,11 +240,13 @@ final class AlgorithmExperimentsTests: XCTestCase {
                 XCTAssertGreaterThan(runway.recommendation!.automatic!.bolusUnits!, standard.recommendation!.automatic!.bolusUnits!)
             }
         }
+        // The runway does not add to the manual recommendation; the band can only lower it.
         input.recommendationType = .manualBolus
         input.experiments = []
         let standard = LoopAlgorithm.run(input: input)
         input.experiments = [.guardAndRunway]
-        assertSameOutput(standard, LoopAlgorithm.run(input: input))
+        let manual = LoopAlgorithm.run(input: input)
+        XCTAssertLessThanOrEqual(manual.recommendation?.manual?.amount ?? 0, standard.recommendation?.manual?.amount ?? 0)
     }
 
     func testTargetLoweredFloors() {

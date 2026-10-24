@@ -22,7 +22,7 @@ public enum AlgorithmExperiment: String, Codable, CaseIterable, Sendable {
     /// - **Volatility band** (C29). While no carbs are on board, the first two hours of the forecast are
     ///   lowered in proportion to recent glucose volatility, so the low guard sees it. Eventual glucose
     ///   is unchanged. Its depth is keyed to the person's median volatility
-    ///   (`AlgorithmInput.volatilityBaseline`).
+    ///   (`AlgorithmInput.volatilityBaseline`), and is full depth until a baseline exists.
     /// - **Runway reserve** (C40). While glucose is 150 or above and no carbs are on board: how much
     ///   extra insulin could still be taken back by suspending scheduled basal, if glucose then fell
     ///   along the forecast less one σ of recent volatility, without reaching the suspend threshold
@@ -75,8 +75,13 @@ struct ExperimentParameters: Equatable {
         if experiments.contains(.guardAndRunway) {
             postLowRiseCut = PostLowRiseCut()
             runwayReserve = RunwayReserve()
+            // Without a baseline (a new user, under a day of glucose) the band runs at full depth: the
+            // baseline only ever lowers it, for people whose glucose is volatile. Full depth is the safer
+            // side, fewer lows for a little time in range.
             if let baseline = volatilityBaseline, baseline.isFinite, baseline > 0 {
                 volatilityBand = VolatilityBand(gain: Swift.min(1.0, 6.7 / baseline))
+            } else {
+                volatilityBand = VolatilityBand(gain: 1.0)
             }
         }
     }
