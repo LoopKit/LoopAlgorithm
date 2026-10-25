@@ -248,8 +248,7 @@ final class AlgorithmExperimentsTests: XCTestCase {
             XCTAssertFalse(output.postLowRiseCutActive)
             XCTAssertEqual(output.guarded(standard.predictedGlucose), runway.predictedGlucose)
             let deepest = zip(plain, banded).map { $0 - $1 }.max()!
-            XCTAssertLessThanOrEqual(deepest, output.bandDepth + 1e-9)
-            XCTAssertGreaterThan(deepest, 0.9 * output.bandDepth, "forecast points fall near the 60 min horizon")
+            XCTAssertEqual(output.bandDepth, deepest, accuracy: 1e-9)
             if type == .tempBasal {
                 XCTAssertGreaterThan(runway.recommendation!.automatic!.basalAdjustment.unitsPerHour,
                                      standard.recommendation!.automatic!.basalAdjustment.unitsPerHour)
