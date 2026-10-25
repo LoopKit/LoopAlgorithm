@@ -13,6 +13,9 @@ public struct GuardAndRunwayOutput: Equatable {
     public var volatility: Double
     /// False when active carbs kept the volatility band off.
     public var bandApplied: Bool
+    /// The most the band lowered any point of the forecast, mg/dL; 0 when it was off. A forecast with no
+    /// points near 60 min, where the band is deepest, is lowered less.
+    public var bandDepth: Double
     /// How far the target for automatic dosing was lowered, mg/dL. Manual recommendations keep the target.
     public var runwayShift: Double
     /// True while the post-low cut scales down the rising side of retrospective correction.
@@ -22,11 +25,6 @@ public struct GuardAndRunwayOutput: Equatable {
 
     /// The band's depth multiplier, from the volatility baseline.
     public var bandGain: Double { band.gain }
-
-    /// How far the band lowers the forecast at its deepest point (60 min), mg/dL; 0 when it was off.
-    public var bandDepth: Double {
-        bandApplied ? band.gain * volatility * pow(band.horizon.minutes / 5.0, band.exponent) : 0
-    }
 
     /// `glucose` lowered by the band as this run applied it; unchanged when the band was off.
     public func guarded(_ glucose: [PredictedGlucoseValue]) -> [PredictedGlucoseValue] {

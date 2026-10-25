@@ -842,11 +842,16 @@ public struct LoopAlgorithm {
             }
             if let band = experimentParameters.volatilityBand, let volatility {
                 let bandApplied = !(band.carbGate && (prediction.activeCarbs ?? 0) > 0)
+                var bandDepth = 0.0
                 if bandApplied {
-                    prediction.glucose = volatilityBanded(prediction.glucose, band: band, volatility: volatility)
+                    let banded = volatilityBanded(prediction.glucose, band: band, volatility: volatility)
+                    bandDepth = zip(prediction.glucose, banded).map {
+                        $0.quantity.doubleValue(for: .milligramsPerDeciliter) - $1.quantity.doubleValue(for: .milligramsPerDeciliter)
+                    }.max() ?? 0
+                    prediction.glucose = banded
                 }
                 guardAndRunway = GuardAndRunwayOutput(
-                    volatility: volatility, bandApplied: bandApplied, runwayShift: runwayShift,
+                    volatility: volatility, bandApplied: bandApplied, bandDepth: bandDepth, runwayShift: runwayShift,
                     postLowRiseCutActive: experimentParameters.postLowRiseCut?.isActive(glucoseHistory: input.glucoseHistory) ?? false,
                     band: band)
             }
