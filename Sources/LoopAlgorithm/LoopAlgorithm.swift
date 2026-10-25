@@ -752,6 +752,7 @@ public struct LoopAlgorithm {
 
         // Now validate/recommend
         let result: Result<LoopAlgorithmDoseRecommendation,Error>
+        var guardAndRunway: GuardAndRunwayOutput?
 
         do {
             guard let latestGlucose = input.glucoseHistory.last else {
@@ -839,10 +840,15 @@ public struct LoopAlgorithm {
                     suspendThreshold: suspendThreshold.doubleValue(for: unit),
                     insulinModel: input.recommendationInsulinModel)
             }
-            if let band = experimentParameters.volatilityBand, let volatility,
-               !(band.carbGate && (prediction.activeCarbs ?? 0) > 0)
-            {
-                prediction.glucose = volatilityBanded(prediction.glucose, band: band, volatility: volatility)
+            if let band = experimentParameters.volatilityBand, let volatility {
+                let bandApplied = !(band.carbGate && (prediction.activeCarbs ?? 0) > 0)
+                if bandApplied {
+                    prediction.glucose = volatilityBanded(prediction.glucose, band: band, volatility: volatility)
+                }
+                guardAndRunway = GuardAndRunwayOutput(
+                    volatility: volatility, bandApplied: bandApplied, runwayShift: runwayShift,
+                    postLowRiseCutActive: experimentParameters.postLowRiseCut?.isActive(glucoseHistory: input.glucoseHistory) ?? false,
+                    band: band)
             }
 
             let sensitivityForDosing: [AbsoluteScheduleValue<LoopQuantity>]
@@ -912,7 +918,8 @@ public struct LoopAlgorithm {
             effects: prediction.effects,
             dosesRelativeToBasal: prediction.dosesRelativeToBasal,
             activeInsulin: prediction.activeInsulin,
-            activeCarbs: prediction.activeCarbs
+            activeCarbs: prediction.activeCarbs,
+            guardAndRunway: guardAndRunway
         )
     }
 }
