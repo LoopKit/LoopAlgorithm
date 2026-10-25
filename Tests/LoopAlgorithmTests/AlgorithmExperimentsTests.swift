@@ -49,7 +49,15 @@ final class AlgorithmExperimentsTests: XCTestCase {
         let standard = LoopAlgorithm.run(input: input)
         input.experiments = [.guardAndRunway]
         input.volatilityBaseline = 5
-        assertSameOutput(standard, LoopAlgorithm.run(input: input))
+        let gated = LoopAlgorithm.run(input: input)
+        assertSameOutput(standard, gated)
+        XCTAssertNil(standard.guardAndRunway)
+        let output = gated.guardAndRunway!
+        XCTAssertFalse(output.bandApplied)
+        XCTAssertEqual(output.bandDepth, 0)
+        XCTAssertEqual(output.runwayShift, 0)
+        XCTAssertFalse(output.postLowRiseCutActive)
+        XCTAssertEqual(output.guarded(standard.predictedGlucose), standard.predictedGlucose)
     }
 
     func testWithoutABaselineTheBandIsFullDepth() {
@@ -134,6 +142,7 @@ final class AlgorithmExperimentsTests: XCTestCase {
         let cut = LoopAlgorithm.run(input: input)
         XCTAssertLessThan(cut.predictedGlucose.last!.quantity.doubleValue(for: unit),
                           standard.predictedGlucose.last!.quantity.doubleValue(for: unit))
+        XCTAssertTrue(cut.guardAndRunway!.postLowRiseCutActive)
     }
 
     // MARK: - Volatility
@@ -233,6 +242,14 @@ final class AlgorithmExperimentsTests: XCTestCase {
             XCTAssertEqual(banded.count, plain.count)
             XCTAssertEqual(banded.last, plain.last, "eventual glucose is unchanged")
             XCTAssertTrue(zip(banded, plain).allSatisfy { $0 <= $1 }, "the band only lowers the forecast")
+            let output = runway.guardAndRunway!
+            XCTAssertTrue(output.bandApplied)
+            XCTAssertGreaterThan(output.runwayShift, 0)
+            XCTAssertFalse(output.postLowRiseCutActive)
+            XCTAssertEqual(output.guarded(standard.predictedGlucose), runway.predictedGlucose)
+            let deepest = zip(plain, banded).map { $0 - $1 }.max()!
+            XCTAssertLessThanOrEqual(deepest, output.bandDepth + 1e-9)
+            XCTAssertGreaterThan(deepest, 0.9 * output.bandDepth, "forecast points fall near the 60 min horizon")
             if type == .tempBasal {
                 XCTAssertGreaterThan(runway.recommendation!.automatic!.basalAdjustment.unitsPerHour,
                                      standard.recommendation!.automatic!.basalAdjustment.unitsPerHour)
