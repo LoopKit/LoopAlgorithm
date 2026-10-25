@@ -79,6 +79,10 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
     ///   - gradualTransitionThreshold: Maximum allowed difference between consecutive readings in mg/dL (default 40.0)
     /// - Returns: True if all consecutive differences are within the threshold
     public func hasGradualTransitions(gradualTransitionThreshold: Double = 40.0) -> Bool {
+        if contains(where: \.wasUserEntered) {
+            return filter { !$0.wasUserEntered }.hasGradualTransitions(gradualTransitionThreshold: gradualTransitionThreshold)
+        }
+
         guard count > 1 else {
             return false  // A single point could be a spike and should not be used for momentum calculation
         }
@@ -113,6 +117,10 @@ extension BidirectionalCollection where Element: GlucoseSampleValue, Index == In
         delta: TimeInterval = GlucoseMath.defaultDelta,
         velocityMaximum: LoopQuantity? = nil
     ) -> [GlucoseEffect] {
+
+        if contains(where: \.wasUserEntered) {
+            return filter { !$0.wasUserEntered }.linearMomentumEffect(duration: duration, delta: delta, velocityMaximum: velocityMaximum)
+        }
 
         let velocityMax = velocityMaximum ?? LoopQuantity(unit: .milligramsPerDeciliterPerMinute, doubleValue: 4.0)
 
@@ -176,6 +184,11 @@ extension Collection where Element: GlucoseSampleValue, Index == Int {
     /// - Parameter effects: Glucose effects to be countered, in chronological order
     /// - Returns: An array of velocities describing the change in glucose samples compared to the specified effects
     public func counteractionEffects(to effects: [GlucoseEffect]) -> [GlucoseEffectVelocity] {
+        // A manual entry is a different measurement from the CGM; a change between the two is not glucose movement.
+        if contains(where: \.wasUserEntered) {
+            return filter { !$0.wasUserEntered }.counteractionEffects(to: effects)
+        }
+
         let mgdL = LoopUnit.milligramsPerDeciliter
         let velocityUnit = GlucoseEffectVelocity.perSecondUnit
         var velocities = [GlucoseEffectVelocity]()

@@ -422,6 +422,52 @@ final class GlucoseMathTests: XCTestCase {
         }
     }
 
+    private func manualEntry(at date: Date, mgdl: Double) -> GlucoseFixtureValue {
+        GlucoseFixtureValue(
+            startDate: date,
+            quantity: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: mgdl),
+            isDisplayOnly: false,
+            wasUserEntered: true,
+            provenanceIdentifier: nil,
+            condition: nil,
+            trendRate: nil
+        )
+    }
+
+    func testMomentumEffectIgnoresManualEntry() {
+        var input = loadInputFixture("momentum_effect_falling_glucose_input")
+        let expected = input.linearMomentumEffect(duration: .minutes(30))
+        let middle = input[input.count / 2]
+        input.insert(manualEntry(at: middle.startDate.addingTimeInterval(.minutes(2.5)), mgdl: middle.quantity.doubleValue(for: .milligramsPerDeciliter) - 30), at: input.count / 2 + 1)
+
+        XCTAssertEqual(expected, input.linearMomentumEffect(duration: .minutes(30)))
+    }
+
+    func testCounteractionEffectsIgnoreManualEntry() {
+        var input = loadInputFixture("counteraction_effect_falling_glucose_input")
+        let insulinEffect = loadOutputFixture("counteraction_effect_falling_glucose_insulin")
+        let expected = input.counteractionEffects(to: insulinEffect)
+        let index = input.count / 2
+        let sample = input[index]
+        input.insert(manualEntry(at: sample.startDate.addingTimeInterval(.minutes(4.5)), mgdl: sample.quantity.doubleValue(for: .milligramsPerDeciliter) - 30), at: index + 1)
+
+        let effects = input.counteractionEffects(to: insulinEffect)
+        let unit = GlucoseEffectVelocity.perSecondUnit
+
+        XCTAssertEqual(expected.map(\.startDate), effects.map(\.startDate))
+        XCTAssertEqual(expected.map(\.endDate), effects.map(\.endDate))
+        XCTAssertEqual(expected.map { $0.quantity.doubleValue(for: unit) }, effects.map { $0.quantity.doubleValue(for: unit) })
+    }
+
+    func testGradualTransitionsIgnoreManualEntry() {
+        var input = loadInputFixture("momentum_effect_falling_glucose_input")
+        XCTAssertTrue(input.hasGradualTransitions())
+        let middle = input[input.count / 2]
+        input.insert(manualEntry(at: middle.startDate.addingTimeInterval(.minutes(2.5)), mgdl: middle.quantity.doubleValue(for: .milligramsPerDeciliter) + 60), at: input.count / 2 + 1)
+
+        XCTAssertTrue(input.hasGradualTransitions())
+    }
+
     func testCounteractionEffectsForNoGlucose() {
         let input = [GlucoseFixtureValue]()
         let insulinEffect = loadOutputFixture("counteraction_effect_falling_glucose_insulin")
