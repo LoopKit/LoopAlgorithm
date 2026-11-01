@@ -92,7 +92,8 @@ struct WalshInsulinModel: InsulinModel {
     }
 }
 
-/// A repeating daily basal schedule, expanded the way LoopKit's DailyValueSchedule.between does
+/// A repeating daily basal schedule, expanded the way LoopKit's DailyValueSchedule.between does for a
+/// fixed-offset time zone and a first item at midnight
 struct DailyBasalSchedule {
     var items: [(startTime: TimeInterval, rate: Double)]
     var timeZone: TimeZone
