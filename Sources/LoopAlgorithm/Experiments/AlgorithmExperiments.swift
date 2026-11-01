@@ -55,7 +55,10 @@ public enum ExperimentOption: String, Codable, CaseIterable, Sendable {
     ///
     /// It is computed from the inputs on every run, with no stored state, so it needs a long history: 72 h of
     /// glucose, carb entries from 72 h plus the longest absorption time, and doses from 72 h plus the insulin
-    /// activity duration. With 12 h of history the level reaches only about 40 % of its working value.
+    /// activity duration. The carb ratio and ISF timelines must start before the oldest carb entry (carb
+    /// absorption traps otherwise). A meal whose entry is dropped while its absorption is still inside the
+    /// glucose history reads as unexplained rise and pushes the level up: pass carbs for the whole history.
+    /// With 12 h of history the level reaches only about 40 % of its working value.
     case slowRetrospectiveCorrection
 }
 
