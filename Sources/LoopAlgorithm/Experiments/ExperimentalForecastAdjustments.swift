@@ -59,7 +59,7 @@ extension LoopAlgorithm {
                                suspendThreshold: Double, insulinModel: InsulinModel) -> Double {
         let unit = LoopUnit.milligramsPerDeciliter
         guard volatility.isFinite, sensitivity > 0, currentGlucose >= reserve.minGlucose,
-              !(reserve.carbGate && activeCarbs > 0),
+              reserve.carbFade > 0 ? activeCarbs < reserve.carbFade : activeCarbs <= 0,
               let t0 = prediction.first?.startDate, let last = prediction.last,
               // A forecast that stops short of the horizon cannot show a fall beyond its end: no runway.
               last.startDate.timeIntervalSince(t0) >= reserve.horizon else { return 0 }
@@ -99,7 +99,68 @@ extension LoopAlgorithm {
             eMax = Swift.min(eMax, (path + sensitivity * withheld - suspendThreshold) / (sensitivity * d))
         }
         guard eMax.isFinite else { return 0 }
-        return Swift.min(reserve.maxAimShift, reserve.fraction * sensitivity * Swift.max(0, eMax))
+        let carbScale = reserve.carbFade > 0 ? Swift.max(0, 1 - Swift.max(0, activeCarbs) / reserve.carbFade) : 1
+        return carbScale * Swift.min(reserve.maxAimShift, reserve.fraction * sensitivity * Swift.max(0, eMax))
+    }
+
+    /// The slow retrospective correction's level, mg/dL per 5 min: the exponentially weighted mean of the
+    /// unexplained glucose change (insulin counteraction less carb effect) over the counteraction effects
+    /// that end within `window` before `now`, from zero at the window's start. Each interval's change is
+    /// scaled to 5 minutes and weighted by its duration. `carbEffects` must cover the window.
+    static func slowRetrospectiveCorrectionLevel(counteraction: [GlucoseEffectVelocity], carbEffects: [GlucoseEffect],
+                                                 now: Date, parameters: ExperimentParameters.SlowRetrospectiveCorrection) -> Double {
+        let unit = LoopUnit.milligramsPerDeciliter
+        var level = 0.0
+        var k = carbEffects.startIndex
+        for ice in counteraction where now.timeIntervalSince(ice.endDate) < parameters.window && ice.endDate <= now {
+            let duration = ice.endDate.timeIntervalSince(ice.startDate)
+            guard duration > 0 else { continue }
+            // Carb effect over the 5-min carb grid step ending at or before this interval's end.
+            while k + 1 < carbEffects.endIndex && carbEffects[k + 1].startDate <= ice.endDate.addingTimeInterval(1) { k += 1 }
+            var carb = 0.0
+            if k > carbEffects.startIndex && carbEffects[k].startDate <= ice.endDate.addingTimeInterval(1) {
+                carb = carbEffects[k].quantity.doubleValue(for: unit) - carbEffects[k - 1].quantity.doubleValue(for: unit)
+            }
+            let iceChange = ice.effect.quantity.doubleValue(for: unit)
+            guard iceChange.isFinite, carb.isFinite else { continue }
+            let residual = (iceChange - carb) * .minutes(5) / duration
+            let decay = exp(-duration / parameters.timeConstant)
+            level = decay * level + (1 - decay) * residual
+        }
+        return level
+    }
+
+    /// The ISF multiplier for a slow retrospective correction level.
+    static func slowRetrospectiveCorrectionMultiplier(level: Double, parameters: ExperimentParameters.SlowRetrospectiveCorrection) -> Double {
+        Swift.max(parameters.minMultiplier, Swift.min(parameters.maxMultiplier, 1 - parameters.gain * level))
+    }
+
+    /// `sensitivity` with every value multiplied by `multiplier`.
+    static func sensitivityScaled(_ sensitivity: [AbsoluteScheduleValue<LoopQuantity>], by multiplier: Double) -> [AbsoluteScheduleValue<LoopQuantity>] {
+        let unit = LoopUnit.milligramsPerDeciliter
+        return sensitivity.map {
+            AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate,
+                                  value: LoopQuantity(unit: unit, doubleValue: $0.value.doubleValue(for: unit) * multiplier))
+        }
+    }
+
+    /// The low guard's decision on the volatility-banded forecast applied to the correction sized on the
+    /// forecast itself: a banded point below the suspend threshold suspends; otherwise the banded minimum
+    /// replaces the forecast's minimum, and the units and the point being corrected stay the forecast's.
+    static func guarded(_ correction: InsulinCorrection, by guardCorrection: InsulinCorrection) -> InsulinCorrection {
+        if case .suspend = guardCorrection { return guardCorrection }
+        let guardMinimum: GlucoseValue?
+        switch guardCorrection {
+        case .aboveRange(min: let m, correcting: _, minTarget: _, units: _): guardMinimum = m
+        case .entirelyBelowRange(min: let m, minTarget: _, units: _): guardMinimum = m
+        case .suspend(min: let m): guardMinimum = m
+        case .inRange: guardMinimum = nil
+        }
+        if case .aboveRange(min: _, correcting: let correcting, minTarget: let minTarget, units: let units) = correction,
+           let guardMinimum {
+            return .aboveRange(min: guardMinimum, correcting: correcting, minTarget: minTarget, units: units)
+        }
+        return correction
     }
 
     /// The target range lowered by `shift` mg/dL, floored at 70–80.

@@ -206,7 +206,8 @@ final class AlgorithmExperimentsTests: XCTestCase {
 
     func testRunwayGates() {
         XCTAssertEqual(shift(140, volatility: 2), 0, "below 150")
-        XCTAssertEqual(shift(200, carbs: 5, volatility: 2), 0, "carbs on board")
+        XCTAssertEqual(shift(200, carbs: 20, volatility: 2), 0, "20 g of carbs on board")
+        XCTAssertEqual(shift(200, carbs: 10, volatility: 2), 0.5 * shift(200, volatility: 2), accuracy: 1e-9, "fades with carbs")
         XCTAssertGreaterThan(shift(200, volatility: 2), 0)
         let now = Date()
         let short = Array(flatForecast(200, from: now).prefix(30))       // 145 min, short of 180
@@ -229,7 +230,7 @@ final class AlgorithmExperimentsTests: XCTestCase {
         let now = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
         var input = AlgorithmInputFixture.mock(for: now)
         input.glucoseHistory = glucoseSeries(Array(repeating: 220, count: 12), endingAt: now.addingTimeInterval(.minutes(-1)))
-        // No baseline: the band runs at full depth and only lowers the forecast, so a rise in automatic dosing
+        // No baseline: the band runs at full depth, and only the guard sees it, so a rise in automatic dosing
         // is the runway's. No low: no post-low cut.
         for type in [DoseRecommendationType.tempBasal, .automaticBolus] {
             input.recommendationType = type
@@ -237,16 +238,16 @@ final class AlgorithmExperimentsTests: XCTestCase {
             let standard = LoopAlgorithm.run(input: input)
             input.experiments = [.guardAndRunway]
             let runway = LoopAlgorithm.run(input: input)
-            let banded = runway.predictedGlucose.map { $0.quantity.doubleValue(for: unit) }
+            XCTAssertEqual(runway.predictedGlucose, standard.predictedGlucose, "the forecast shown is not banded")
+            let output = runway.guardAndRunway!
+            let banded = output.guarded(runway.predictedGlucose).map { $0.quantity.doubleValue(for: unit) }
             let plain = standard.predictedGlucose.map { $0.quantity.doubleValue(for: unit) }
             XCTAssertEqual(banded.count, plain.count)
             XCTAssertEqual(banded.last, plain.last, "eventual glucose is unchanged")
             XCTAssertTrue(zip(banded, plain).allSatisfy { $0 <= $1 }, "the band only lowers the forecast")
-            let output = runway.guardAndRunway!
             XCTAssertTrue(output.bandApplied)
             XCTAssertGreaterThan(output.runwayShift, 0)
             XCTAssertFalse(output.postLowRiseCutActive)
-            XCTAssertEqual(output.guarded(standard.predictedGlucose), runway.predictedGlucose)
             let deepest = zip(plain, banded).map { $0 - $1 }.max()!
             XCTAssertEqual(output.bandDepth, deepest, accuracy: 1e-9)
             if type == .tempBasal {
@@ -263,6 +264,88 @@ final class AlgorithmExperimentsTests: XCTestCase {
         input.experiments = [.guardAndRunway]
         let manual = LoopAlgorithm.run(input: input)
         XCTAssertLessThanOrEqual(manual.recommendation?.manual?.amount ?? 0, standard.recommendation?.manual?.amount ?? 0)
+    }
+
+    func testGuardOnlyBand() {
+        let now = Date()
+        func g(_ v: Double) -> GlucoseValue { SimpleGlucoseValue(startDate: now, quantity: .glucose(v)) }
+        func d(_ c: InsulinCorrection) -> String {
+            let v = { (x: GlucoseValue) in Int(x.quantity.doubleValue(for: self.unit)) }
+            switch c {
+            case .aboveRange(min: let m, correcting: let c, minTarget: _, units: let u): return "above \(v(m)) \(v(c)) \(u)"
+            case .entirelyBelowRange(min: let m, minTarget: _, units: let u): return "below \(v(m)) \(u)"
+            case .suspend(min: let m): return "suspend \(v(m))"
+            case .inRange: return "in range"
+            }
+        }
+        let point = InsulinCorrection.aboveRange(min: g(120), correcting: g(200), minTarget: .glucose(100), units: 2)
+        // A banded point below the suspend threshold suspends.
+        XCTAssertEqual(d(LoopAlgorithm.guarded(point, by: .suspend(min: g(65)))), "suspend 65")
+        // Otherwise the banded minimum is the one the guard checks; the units stay the forecast's.
+        XCTAssertEqual(d(LoopAlgorithm.guarded(point, by: .aboveRange(min: g(90), correcting: g(170), minTarget: .glucose(100), units: 1))),
+                       "above 90 200 2.0")
+        XCTAssertEqual(d(LoopAlgorithm.guarded(point, by: .entirelyBelowRange(min: g(85), minTarget: .glucose(100), units: -1))),
+                       "above 85 200 2.0")
+        // A forecast that needs no correction is left as it is.
+        XCTAssertEqual(d(LoopAlgorithm.guarded(.inRange, by: .entirelyBelowRange(min: g(85), minTarget: .glucose(100), units: -1))), "in range")
+    }
+
+    // MARK: - Slow retrospective correction
+
+    private func counteraction(_ perFiveMinutes: Double, hours: Double, endingAt end: Date) -> [GlucoseEffectVelocity] {
+        let n = Int(hours * 12)
+        return (0..<n).map { i in
+            let s = end.addingTimeInterval(-Double(n - i) * .minutes(5))
+            return GlucoseEffectVelocity(startDate: s, endDate: s.addingTimeInterval(.minutes(5)),
+                                         quantity: LoopQuantity(unit: GlucoseEffectVelocity.perSecondUnit, doubleValue: perFiveMinutes / 300))
+        }
+    }
+
+    func testSlowRCLevelIsTheWindowedMeanResidual() {
+        let now = Date(), p = ExperimentParameters.SlowRetrospectiveCorrection()
+        // A constant 2 mg/dL per 5 min for 100 h, no carbs: only the last 72 h count, from zero at their start.
+        let level = LoopAlgorithm.slowRetrospectiveCorrectionLevel(
+            counteraction: counteraction(2, hours: 100, endingAt: now), carbEffects: [], now: now, parameters: p)
+        XCTAssertEqual(level, 2 * (1 - exp(-3.0)), accuracy: 0.01)
+        // Carb effect is subtracted: a carb curve rising 2 mg/dL per 5 min explains all of it.
+        let steps = 100 * 12
+        let carbs: [GlucoseEffect] = (0...steps).map { (i: Int) -> GlucoseEffect in
+            let date = now.addingTimeInterval(-Double(steps - i) * 300)
+            return GlucoseEffect(startDate: date, quantity: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: 2 * Double(i)))
+        }
+        let explained = LoopAlgorithm.slowRetrospectiveCorrectionLevel(
+            counteraction: counteraction(2, hours: 100, endingAt: now), carbEffects: carbs, now: now, parameters: p)
+        XCTAssertEqual(explained, 0, accuracy: 1e-9)
+    }
+
+    func testSlowRCMultiplierClamps() {
+        let p = ExperimentParameters.SlowRetrospectiveCorrection()
+        XCTAssertEqual(LoopAlgorithm.slowRetrospectiveCorrectionMultiplier(level: 0, parameters: p), 1)
+        XCTAssertEqual(LoopAlgorithm.slowRetrospectiveCorrectionMultiplier(level: 2, parameters: p), 0.9, accuracy: 1e-12)
+        XCTAssertEqual(LoopAlgorithm.slowRetrospectiveCorrectionMultiplier(level: 20, parameters: p), 0.7)
+        XCTAssertEqual(LoopAlgorithm.slowRetrospectiveCorrectionMultiplier(level: -20, parameters: p), 1.3)
+    }
+
+    func testSlowRCDosesMoreWhenGlucoseKeepsRisingUnexplained() {
+        let now = ISO8601DateFormatter().date(from: "2024-01-03T12:00:00+0000")!
+        var input = AlgorithmInputFixture.mock(for: now)
+        input.recommendationType = .automaticBolus
+        // Steady unexplained rise over 72 h, no carbs: the model keeps under-predicting.
+        let values = (0..<(72 * 12)).map { 100 + 0.15 * Double($0) }
+        input.glucoseHistory = glucoseSeries(values, endingAt: now.addingTimeInterval(.minutes(-1)))
+        input.doses = []
+        input.carbEntries = []
+        input.sensitivity = [AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-96)), endDate: now.addingTimeInterval(.hours(12)), value: .glucose(50))]
+        input.basal = [AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-96)), endDate: now.addingTimeInterval(.hours(12)), value: 1.0)]
+        input.carbRatio = [AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-96)), endDate: now.addingTimeInterval(.hours(12)), value: 10)]
+        let standard = LoopAlgorithm.run(input: input)
+        input.experiments = [.slowRetrospectiveCorrection]
+        let slow = LoopAlgorithm.run(input: input)
+        XCTAssertNil(standard.slowRetrospectiveCorrection)
+        let output = slow.slowRetrospectiveCorrection!
+        XCTAssertGreaterThan(output.level, 0)
+        XCTAssertLessThan(output.multiplier, 1)
+        XCTAssertGreaterThan(slow.recommendation!.automatic!.bolusUnits!, standard.recommendation!.automatic!.bolusUnits!)
     }
 
     func testTargetLoweredFloors() {
@@ -288,7 +371,8 @@ final class AlgorithmExperimentsTests: XCTestCase {
         let back = try decoder.decode(AlgorithmInputFixture.self, from: encoder.encode(input))
         XCTAssertEqual(back.experiments, [.guardAndRunway])
         XCTAssertEqual(back.volatilityBaseline, 4.2)
-        XCTAssertEqual(ExperimentOption.allCases, [.guardAndRunway, .integralRetrospectiveCorrection, .glucoseBasedApplicationFactor])
+        XCTAssertEqual(ExperimentOption.allCases, [.guardAndRunway, .integralRetrospectiveCorrection, .glucoseBasedApplicationFactor,
+                                                   .slowRetrospectiveCorrection])
     }
 
     func testFixtureRoundTripCarriesACombination() throws {

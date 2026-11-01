@@ -16,6 +16,8 @@ public struct AlgorithmOutput<CarbEntryType: CarbEntry> {
     public var activeCarbs: Double?
     /// Set when the guardAndRunway experiment ran and dosing was recommended.
     public var guardAndRunway: GuardAndRunwayOutput?
+    /// Set when the slowRetrospectiveCorrection experiment ran and dosing was recommended.
+    public var slowRetrospectiveCorrection: SlowRetrospectiveCorrectionOutput?
 
     public init(
         recommendationResult: Result<LoopAlgorithmDoseRecommendation, Error>,
@@ -24,7 +26,8 @@ public struct AlgorithmOutput<CarbEntryType: CarbEntry> {
         dosesRelativeToBasal: [BasalRelativeDose],
         activeInsulin: Double? = nil,
         activeCarbs: Double? = nil,
-        guardAndRunway: GuardAndRunwayOutput? = nil
+        guardAndRunway: GuardAndRunwayOutput? = nil,
+        slowRetrospectiveCorrection: SlowRetrospectiveCorrectionOutput? = nil
     ) {
         self.recommendationResult = recommendationResult
         self.predictedGlucose = predictedGlucose
@@ -33,6 +36,7 @@ public struct AlgorithmOutput<CarbEntryType: CarbEntry> {
         self.activeInsulin = activeInsulin
         self.activeCarbs = activeCarbs
         self.guardAndRunway = guardAndRunway
+        self.slowRetrospectiveCorrection = slowRetrospectiveCorrection
     }
 
     public var recommendation: LoopAlgorithmDoseRecommendation? {
