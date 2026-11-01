@@ -797,13 +797,13 @@ public extension Collection {
         from start: Date? = nil,
         to end: Date? = nil,
         carbRatios: [AbsoluteScheduleValue<Double>],
-        insulinSensitivities: [AbsoluteScheduleValue<Double>],
+        insulinSensitivitiesMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         defaultAbsorptionTime: TimeInterval = CarbMath.defaultAbsorptionTime,
         absorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption(),
         delay: TimeInterval = CarbMath.defaultEffectDelay,
         delta: TimeInterval = GlucoseMath.defaultDelta
     ) -> [GlucoseEffect] where Element == CarbStatus<T> {
-        dynamicGlucoseEffects(from: start, to: end, carbRatios: carbRatios, insulinSensitivities: insulinSensitivities.mgdlQuantities,
+        dynamicGlucoseEffects(from: start, to: end, carbRatios: carbRatios, insulinSensitivities: insulinSensitivitiesMgdlPerUnit.mgdlQuantities,
                               defaultAbsorptionTime: defaultAbsorptionTime, absorptionModel: absorptionModel, delay: delay, delta: delta)
     }
 }
@@ -813,7 +813,7 @@ public extension Collection where Element: CarbEntry {
     func map(
         to effectVelocities: [GlucoseEffectVelocity],
         carbRatio: [AbsoluteScheduleValue<Double>],
-        insulinSensitivity: [AbsoluteScheduleValue<Double>],
+        insulinSensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         absorptionTimeOverrun: Double = CarbMath.defaultAbsorptionTimeOverrun,
         defaultAbsorptionTime: TimeInterval = CarbMath.defaultAbsorptionTime,
         delay: TimeInterval = CarbMath.defaultEffectDelay,
@@ -822,7 +822,7 @@ public extension Collection where Element: CarbEntry {
         adaptiveAbsorptionRateEnabled: Bool = false,
         adaptiveRateStandbyIntervalFraction: Double = 0.2
     ) -> [CarbStatus<Element>] {
-        map(to: effectVelocities, carbRatio: carbRatio, insulinSensitivity: insulinSensitivity.mgdlQuantities,
+        map(to: effectVelocities, carbRatio: carbRatio, insulinSensitivity: insulinSensitivityMgdlPerUnit.mgdlQuantities,
             absorptionTimeOverrun: absorptionTimeOverrun, defaultAbsorptionTime: defaultAbsorptionTime, delay: delay,
             initialAbsorptionTimeOverrun: initialAbsorptionTimeOverrun, absorptionModel: absorptionModel,
             adaptiveAbsorptionRateEnabled: adaptiveAbsorptionRateEnabled, adaptiveRateStandbyIntervalFraction: adaptiveRateStandbyIntervalFraction)

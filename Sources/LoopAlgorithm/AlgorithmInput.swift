@@ -20,11 +20,11 @@ public protocol AlgorithmInput {
     var carbEntries: [CarbType] { get }
     var basal: [AbsoluteScheduleValue<Double>] { get }
     /// Insulin sensitivity in mg/dL per unit
-    var sensitivity: [AbsoluteScheduleValue<Double>] { get }
+    var sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>] { get }
     var carbRatio: [AbsoluteScheduleValue<Double>] { get }
-    var target: GlucoseRangeTimeline { get }
+    var targetMgdl: GlucoseRangeTimeline { get }
     /// Suspend threshold in mg/dL
-    var suspendThreshold: Double? { get }
+    var suspendThresholdMgdl: Double? { get }
     var maxBolus: Double { get }
     var maxActiveInsulinMultiplier: Double? { get }  // Defaults to 2 (2x maxBolus)
     var maxBasalRate: Double { get }
@@ -54,7 +54,7 @@ public extension AlgorithmInput {
 }
 
 extension AlgorithmInput {
-    var sensitivityQuantities: [AbsoluteScheduleValue<LoopQuantity>] { sensitivity.mgdlQuantities }
-    var targetQuantities: QuantityRangeTimeline { target.quantities }
-    var suspendThresholdQuantity: LoopQuantity? { suspendThreshold.map(LoopQuantity.mgdl) }
+    var sensitivityQuantities: [AbsoluteScheduleValue<LoopQuantity>] { sensitivityMgdlPerUnit.mgdlQuantities }
+    var targetQuantities: QuantityRangeTimeline { targetMgdl.quantities }
+    var suspendThresholdQuantity: LoopQuantity? { suspendThresholdMgdl.map(LoopQuantity.mgdl) }
 }

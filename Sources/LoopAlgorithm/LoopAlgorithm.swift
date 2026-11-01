@@ -151,34 +151,33 @@ public struct Algorithm {
     ///   - doses: History of insulin doses: t-16h to t
     ///   - carbEntries: History of carb entries: t-10h to t
     ///   - basal: Scheduled basal rate timeline: t-16h to t
-    ///   - sensitivity: Insulin sensitivity timeline: t-16h to t (eventually with mid-absorption isf changes, it will be t-10h to t)
+    ///   - sensitivityMgdlPerUnit: Insulin sensitivity timeline in mg/dL per unit: t-16h to t (eventually with mid-absorption isf changes, it will be t-10h to t)
     ///   - carbRatio: Carb ratio timeline: t-10h to t+6h
-    ///   - target: Correction range timeline. Used only for the integral-correction clamp when `emulation.integralRCClamp` is enabled; may be empty otherwise.
+    ///   - targetMgdl: Correction range timeline in mg/dL. Used only for the integral-correction clamp when `emulation.integralRCClamp` is enabled; may be empty otherwise.
     ///   - algorithmEffectsOptions: Which effects to include when combining effects to generate glucose prediction
     ///   - useIntegralRetrospectiveCorrection: If true, the prediction will use Integral Retrospection. If false, will use traditional Retrospective Correction
     ///   - includingPositiveVelocityAndRC: If false, only net negative momentum and RC effects will used.
     ///   - carbAbsorptionModel: A model conforming to CarbAbsorptionComputable that is used for computing carb absorption over time.
     ///   - emulation: Options for reproducing earlier deployed algorithm behavior; the default emulates nothing.
-    ///   - momentumVelocityMaximum: Limit on the momentum effect, in mg/dL per minute
+    ///   - momentumVelocityMaximumMgdlPerMinute: Limit on the momentum effect, in mg/dL per minute
     /// - Returns: A LoopPrediction struct containing the predicted glucose and the computed intermediate effects used to make the prediction
     ///
-    /// Sensitivity is in mg/dL per unit and target is in mg/dL.
     public static func generatePrediction<CarbType, GlucoseType, InsulinDoseType>(
         start: Date,
         glucoseHistory: [GlucoseType],
         doses: [InsulinDoseType],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<Double>],
+        sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         carbRatio: [AbsoluteScheduleValue<Double>],
-        target: GlucoseRangeTimeline = [],
+        targetMgdl: GlucoseRangeTimeline = [],
         algorithmEffectsOptions: AlgorithmEffectsOptions = .all,
         useIntegralRetrospectiveCorrection: Bool = false,
         includingPositiveVelocityAndRC: Bool = true,
         useMidAbsorptionISF: Bool = false,
         carbAbsorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption(),
         gradualTransitionsThreshold: Double? = 40.0,
-        momentumVelocityMaximum: Double? = nil,
+        momentumVelocityMaximumMgdlPerMinute: Double? = nil,
         emulation: AlgorithmEmulationOptions = AlgorithmEmulationOptions(),
         experiments: Set<ExperimentOption> = []
     ) -> LoopPrediction<CarbType> where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue, InsulinDoseType: InsulinDose {
@@ -188,16 +187,16 @@ public struct Algorithm {
             doses: doses,
             carbEntries: carbEntries,
             basal: basal,
-            sensitivity: sensitivity.mgdlQuantities,
+            sensitivity: sensitivityMgdlPerUnit.mgdlQuantities,
             carbRatio: carbRatio,
-            target: target.quantities,
+            target: targetMgdl.quantities,
             algorithmEffectsOptions: algorithmEffectsOptions,
             useIntegralRetrospectiveCorrection: useIntegralRetrospectiveCorrection,
             includingPositiveVelocityAndRC: includingPositiveVelocityAndRC,
             useMidAbsorptionISF: useMidAbsorptionISF,
             carbAbsorptionModel: carbAbsorptionModel,
             gradualTransitionsThreshold: gradualTransitionsThreshold,
-            momentumVelocityMaximum: momentumVelocityMaximum.map { LoopQuantity(unit: .milligramsPerDeciliterPerMinute, doubleValue: $0) },
+            momentumVelocityMaximum: momentumVelocityMaximumMgdlPerMinute.map { LoopQuantity(unit: .milligramsPerDeciliterPerMinute, doubleValue: $0) },
             emulation: emulation,
             experiments: experiments
         )
@@ -446,7 +445,7 @@ public struct Algorithm {
     ///     must slice `annotatedDoses` to `[t - insulinLookback, t]` (or
     ///     `[t - lookback, t + 6h]` for future-insulin mode).
     ///   - carbEntries: History of carb entries.
-    ///   - sensitivity: ISF timeline — still required for carb + RC effects.
+    ///   - sensitivityMgdlPerUnit: ISF timeline in mg/dL per unit — still required for carb + RC effects.
     ///   - carbRatio: Carb ratio timeline.
     ///   - algorithmEffectsOptions: Which effects to include.
     ///   - useIntegralRetrospectiveCorrection: Use integral RC.
@@ -462,9 +461,9 @@ public struct Algorithm {
         glucoseHistory: [GlucoseType],
         precomputedInsulin: PrecomputedInsulinInput,
         carbEntries: [CarbType],
-        sensitivity: [AbsoluteScheduleValue<Double>],
+        sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         carbRatio: [AbsoluteScheduleValue<Double>],
-        target: GlucoseRangeTimeline = [],
+        targetMgdl: GlucoseRangeTimeline = [],
         scheduledBasalRate: Double? = nil,
         algorithmEffectsOptions: AlgorithmEffectsOptions = .all,
         useIntegralRetrospectiveCorrection: Bool = false,
@@ -472,7 +471,7 @@ public struct Algorithm {
         useMidAbsorptionISF: Bool = false,
         carbAbsorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption(),
         gradualTransitionsThreshold: Double? = 40.0,
-        momentumVelocityMaximum: Double? = nil,
+        momentumVelocityMaximumMgdlPerMinute: Double? = nil,
         emulation: AlgorithmEmulationOptions = AlgorithmEmulationOptions()
     ) -> LoopPrediction<CarbType> where CarbType: CarbEntry, GlucoseType: GlucoseSampleValue {
         generatePrediction(
@@ -480,9 +479,9 @@ public struct Algorithm {
             glucoseHistory: glucoseHistory,
             precomputedInsulin: precomputedInsulin,
             carbEntries: carbEntries,
-            sensitivity: sensitivity.mgdlQuantities,
+            sensitivity: sensitivityMgdlPerUnit.mgdlQuantities,
             carbRatio: carbRatio,
-            target: target.quantities,
+            target: targetMgdl.quantities,
             scheduledBasalRate: scheduledBasalRate,
             algorithmEffectsOptions: algorithmEffectsOptions,
             useIntegralRetrospectiveCorrection: useIntegralRetrospectiveCorrection,
@@ -490,7 +489,7 @@ public struct Algorithm {
             useMidAbsorptionISF: useMidAbsorptionISF,
             carbAbsorptionModel: carbAbsorptionModel,
             gradualTransitionsThreshold: gradualTransitionsThreshold,
-            momentumVelocityMaximum: momentumVelocityMaximum.map { LoopQuantity(unit: .milligramsPerDeciliterPerMinute, doubleValue: $0) },
+            momentumVelocityMaximum: momentumVelocityMaximumMgdlPerMinute.map { LoopQuantity(unit: .milligramsPerDeciliterPerMinute, doubleValue: $0) },
             emulation: emulation
         )
     }
@@ -809,6 +808,10 @@ public struct Algorithm {
 
     public static func run<LoopAlgorithmInputType: AlgorithmInput>(input: LoopAlgorithmInputType) -> AlgorithmOutput<LoopAlgorithmInputType.CarbType> {
 
+        let scheduledSensitivity = input.sensitivityQuantities
+        let correctionTargets = input.targetQuantities
+        let suspendThresholdSetting = input.suspendThresholdQuantity
+
         var prediction = LoopPrediction(
             glucose: [],
             effects: LoopAlgorithmEffects(
@@ -857,10 +860,10 @@ public struct Algorithm {
                 glucoseHistoryStart: glucoseStart,
                 recommendationEffectInterval: recommendationEffectInterval
             )
-            guard let sensitivityStartDate = input.sensitivityQuantities.first?.startDate, sensitivityStartDate <= neededISFInterval.start else {
+            guard let sensitivityStartDate = scheduledSensitivity.first?.startDate, sensitivityStartDate <= neededISFInterval.start else {
                 throw AlgorithmError.sensitivityTimelineStartsTooLate
             }
-            guard let sensitivityEndDate = input.sensitivityQuantities.last?.endDate, sensitivityEndDate >= neededISFInterval.end else {
+            guard let sensitivityEndDate = scheduledSensitivity.last?.endDate, sensitivityEndDate >= neededISFInterval.end else {
                 throw AlgorithmError.sensitivityTimelineEndsTooEarly
             }
 
@@ -868,7 +871,7 @@ public struct Algorithm {
             if let oldestCarbEntry = input.carbEntries.map({ $0.startDate }).min() {
                 guard
                     let carbRatioStart = input.carbRatio.first?.startDate, carbRatioStart <= oldestCarbEntry,
-                    let sensitivityStart = input.sensitivity.first?.startDate, sensitivityStart <= oldestCarbEntry
+                    let sensitivityStart = input.sensitivityMgdlPerUnit.first?.startDate, sensitivityStart <= oldestCarbEntry
                 else {
                     throw AlgorithmError.carbRatioOrSensitivityStartsAfterCarbEntry
                 }
@@ -879,7 +882,7 @@ public struct Algorithm {
                 throw AlgorithmError.basalTimelineIncomplete
             }
 
-            guard let suspendThreshold = input.suspendThresholdQuantity ?? input.targetQuantities.closestPrior(to: input.predictionStart)?.value.lowerBound else {
+            guard let suspendThreshold = suspendThresholdSetting ?? correctionTargets.closestPrior(to: input.predictionStart)?.value.lowerBound else {
                 throw AlgorithmError.missingSuspendThreshold
             }
 
@@ -892,7 +895,7 @@ public struct Algorithm {
                     basal: input.basal,
                     sensitivity: sensitivity,
                     carbRatio: input.carbRatio,
-                    target: input.targetQuantities,
+                    target: correctionTargets,
                     algorithmEffectsOptions: .all,
                     useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection,
                     includingPositiveVelocityAndRC: input.includePositiveVelocityAndRC,
@@ -903,7 +906,7 @@ public struct Algorithm {
                     experiments: input.experiments
                 )
             }
-            prediction = predict(sensitivity: input.sensitivityQuantities)
+            prediction = predict(sensitivity: scheduledSensitivity)
 
             // Experiment adjustments before dosing (no-ops when `experiments` is empty).
             let experimentParameters = ExperimentParameters(
@@ -913,13 +916,13 @@ public struct Algorithm {
 
             // Slow retrospective correction: the level comes from the forecast at the scheduled ISF; the run
             // then uses ISF × multiplier throughout.
-            var sensitivity = input.sensitivityQuantities
+            var sensitivity = scheduledSensitivity
             if let slow = experimentParameters.slowRetrospectiveCorrection {
                 let windowStart = input.predictionStart.addingTimeInterval(-slow.window)
                 let carbEffects = prediction.effects.carbStatus.dynamicGlucoseEffects(
                     from: windowStart.addingTimeInterval(-GlucoseMath.defaultDelta),
                     carbRatios: input.carbRatio,
-                    insulinSensitivities: input.sensitivityQuantities,
+                    insulinSensitivities: scheduledSensitivity,
                     absorptionModel: input.carbAbsorptionModel.model)
                 let level = slowRetrospectiveCorrectionLevel(
                     counteraction: prediction.effects.insulinCounteraction, carbEffects: carbEffects,
@@ -927,7 +930,7 @@ public struct Algorithm {
                 let multiplier = slowRetrospectiveCorrectionMultiplier(level: level, parameters: slow)
                 slowRetrospectiveCorrection = SlowRetrospectiveCorrectionOutput(level: level, multiplier: multiplier)
                 if multiplier != 1 {
-                    sensitivity = sensitivityScaled(input.sensitivityQuantities, by: multiplier)
+                    sensitivity = sensitivityScaled(scheduledSensitivity, by: multiplier)
                     prediction = predict(sensitivity: sensitivity)
                 }
             }
@@ -937,7 +940,7 @@ public struct Algorithm {
             var runwayShift = 0.0
             if let reserve = experimentParameters.runwayReserve, let volatility,
                let sensitivity = sensitivity.closestPrior(to: input.predictionStart)?.value,
-               let target = input.targetQuantities.closestPrior(to: input.predictionStart)?.value
+               let target = correctionTargets.closestPrior(to: input.predictionStart)?.value
             {
                 let unit = LoopUnit.milligramsPerDeciliter
                 runwayShift = runwayAimShift(
@@ -985,7 +988,7 @@ public struct Algorithm {
             // The runway shift lowers the aim of automatic dosing only; the manual bolus recommendation
             // keeps the user's target.
             let correctionTarget = runwayShift > 0 && input.recommendationType != .manualBolus
-                ? targetLowered(input.targetQuantities, by: runwayShift) : input.targetQuantities
+                ? targetLowered(correctionTargets, by: runwayShift) : correctionTargets
             var correction = insulinCorrection(
                 prediction: prediction.glucose,
                 at: input.predictionStart,
@@ -1011,7 +1014,7 @@ public struct Algorithm {
                     for: correction,
                     maxBolus: input.maxBolus,
                     currentGlucose: latestGlucose,
-                    target: input.targetQuantities)
+                    target: correctionTargets)
                 result = .success(.init(manual: recommendation))
             case .automaticBolus:
                 let recommendation = recommendAutomaticDose(

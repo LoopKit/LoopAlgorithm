@@ -20,10 +20,10 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var doses: [FixtureInsulinDose]
     public var carbEntries: [FixtureCarbEntry]
     public var basal: [AbsoluteScheduleValue<Double>]
-    public var sensitivity: [AbsoluteScheduleValue<Double>]
+    public var sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>]
     public var carbRatio: [AbsoluteScheduleValue<Double>]
-    public var target: GlucoseRangeTimeline
-    public var suspendThreshold: Double?
+    public var targetMgdl: GlucoseRangeTimeline
+    public var suspendThresholdMgdl: Double?
     public var maxBolus: Double
     public var maxActiveInsulinMultiplier: Double?
     public var maxBasalRate: Double
@@ -63,10 +63,10 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         doses: [FixtureInsulinDose],
         carbEntries: [FixtureCarbEntry],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<Double>],
+        sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         carbRatio: [AbsoluteScheduleValue<Double>],
-        target: GlucoseRangeTimeline,
-        suspendThreshold: Double?,
+        targetMgdl: GlucoseRangeTimeline,
+        suspendThresholdMgdl: Double?,
         maxBolus: Double,
         maxActiveInsulinMultiplier: Double? = nil,
         maxBasalRate: Double,
@@ -85,10 +85,10 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         self.doses = doses
         self.carbEntries = carbEntries
         self.basal = basal
-        self.sensitivity = sensitivity
+        self.sensitivityMgdlPerUnit = sensitivityMgdlPerUnit
         self.carbRatio = carbRatio
-        self.target = target
-        self.suspendThreshold = suspendThreshold
+        self.targetMgdl = targetMgdl
+        self.suspendThresholdMgdl = suspendThresholdMgdl
         self.maxBolus = maxBolus
         self.maxActiveInsulinMultiplier = maxActiveInsulinMultiplier
         self.maxBasalRate = maxBasalRate
@@ -114,14 +114,14 @@ extension AlgorithmInputFixture: Codable {
         self.doses = try container.decode([FixtureInsulinDose].self, forKey: .doses)
         self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
-        self.sensitivity = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
+        self.sensitivityMgdlPerUnit = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
         self.carbRatio = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .carbRatio)
-        let targetMgdl = try container.decode([TargetEntry].self, forKey: .target)
-        self.target = targetMgdl.map {
+        let targetEntries = try container.decode([TargetEntry].self, forKey: .target)
+        self.targetMgdl = targetEntries.map {
             let range = ClosedRange(uncheckedBounds: (lower: $0.lowerBound, upper: $0.upperBound))
             return AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: range)
         }
-        self.suspendThreshold = try container.decodeIfPresent(Double.self, forKey: .suspendThreshold)
+        self.suspendThresholdMgdl = try container.decodeIfPresent(Double.self, forKey: .suspendThreshold)
         self.maxBolus = try container.decode(Double.self, forKey: .maxBolus)
         self.maxActiveInsulinMultiplier = try container.decodeIfPresent(Double.self, forKey: .maxActiveInsulinMultiplier)
         self.maxBasalRate = try container.decode(Double.self, forKey: .maxBasalRate)
@@ -163,13 +163,13 @@ extension AlgorithmInputFixture: Codable {
         try container.encode(doses, forKey: .doses)
         try container.encode(carbEntries, forKey: .carbEntries)
         try container.encode(basal, forKey: .basal)
-        try container.encode(sensitivity, forKey: .sensitivity)
+        try container.encode(sensitivityMgdlPerUnit, forKey: .sensitivity)
         try container.encode(carbRatio, forKey: .carbRatio)
-        let targetMgdl = target.map {
+        let targetEntries = targetMgdl.map {
             TargetEntry(startDate: $0.startDate, endDate: $0.endDate, lowerBound: $0.value.lowerBound, upperBound: $0.value.upperBound)
         }
-        try container.encode(targetMgdl, forKey: .target)
-        try container.encode(suspendThreshold, forKey: .suspendThreshold)
+        try container.encode(targetEntries, forKey: .target)
+        try container.encode(suspendThresholdMgdl, forKey: .suspendThreshold)
         try container.encode(maxBolus, forKey: .maxBolus)
         try container.encode(maxActiveInsulinMultiplier, forKey: .maxActiveInsulinMultiplier)
         try container.encode(maxBasalRate, forKey: .maxBasalRate)
@@ -227,10 +227,10 @@ extension AlgorithmInputFixture {
             doses: input.doses.map(\.asFixtureInsulinDose),
             carbEntries: input.carbEntries.map(\.asFixtureCarbEntry),
             basal: input.basal,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
-            target: input.target,
-            suspendThreshold: input.suspendThreshold,
+            targetMgdl: input.targetMgdl,
+            suspendThresholdMgdl: input.suspendThresholdMgdl,
             maxBolus: input.maxBolus,
             maxBasalRate: input.maxBasalRate,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection,

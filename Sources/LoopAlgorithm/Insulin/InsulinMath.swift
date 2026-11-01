@@ -547,34 +547,34 @@ extension Collection where Element == BasalRelativeDose {
 public extension Collection where Element == BasalRelativeDose {
     /// Glucose effects of the doses. Sensitivity is in mg/dL per unit.
     func glucoseEffects(
-        insulinSensitivityHistory: [AbsoluteScheduleValue<Double>],
+        insulinSensitivityHistoryMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         from start: Date? = nil,
         to end: Date? = nil,
         delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
     ) -> [GlucoseEffect] {
-        glucoseEffects(insulinSensitivityHistory: insulinSensitivityHistory.mgdlQuantities, from: start, to: end, delta: delta)
+        glucoseEffects(insulinSensitivityHistory: insulinSensitivityHistoryMgdlPerUnit.mgdlQuantities, from: start, to: end, delta: delta)
     }
 
     /// Glucose effects of the doses using mid-absorption ISF. Sensitivity is in mg/dL per unit.
     func glucoseEffectsMidAbsorptionISF(
         longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
-        insulinSensitivityHistory: [AbsoluteScheduleValue<Double>],
+        insulinSensitivityHistoryMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         from start: Date? = nil,
         to end: Date? = nil,
         delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
     ) -> [GlucoseEffect] {
-        glucoseEffectsMidAbsorptionISF(longestEffectDuration: longestEffectDuration, insulinSensitivityHistory: insulinSensitivityHistory.mgdlQuantities,
+        glucoseEffectsMidAbsorptionISF(longestEffectDuration: longestEffectDuration, insulinSensitivityHistory: insulinSensitivityHistoryMgdlPerUnit.mgdlQuantities,
                                        from: start, to: end, delta: delta)
     }
 
     /// Glucose effects of the doses at the given dates. Sensitivity is in mg/dL per unit.
     func glucoseEffects(
         longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
-        insulinSensitivityTimeline: [AbsoluteScheduleValue<Double>],
+        insulinSensitivityTimelineMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         effectDates: [Date],
         delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
     ) -> [GlucoseEffect] {
-        glucoseEffects(longestEffectDuration: longestEffectDuration, insulinSensitivityTimeline: insulinSensitivityTimeline.mgdlQuantities,
+        glucoseEffects(longestEffectDuration: longestEffectDuration, insulinSensitivityTimeline: insulinSensitivityTimelineMgdlPerUnit.mgdlQuantities,
                        effectDates: effectDates, delta: delta)
     }
 }

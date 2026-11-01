@@ -335,7 +335,7 @@ final class AlgorithmExperimentsTests: XCTestCase {
         input.glucoseHistory = glucoseSeries(values, endingAt: now.addingTimeInterval(.minutes(-1)))
         input.doses = []
         input.carbEntries = []
-        input.sensitivity = [AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-96)), endDate: now.addingTimeInterval(.hours(12)), value: 50)]
+        input.sensitivityMgdlPerUnit = [AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-96)), endDate: now.addingTimeInterval(.hours(12)), value: 50)]
         input.basal = [AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-96)), endDate: now.addingTimeInterval(.hours(12)), value: 1.0)]
         input.carbRatio = [AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-96)), endDate: now.addingTimeInterval(.hours(12)), value: 10)]
         let standard = Algorithm.run(input: input)

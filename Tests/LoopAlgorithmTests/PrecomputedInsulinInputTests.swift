@@ -37,7 +37,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
             doses: input.doses,
             carbEntries: input.carbEntries,
             basal: input.basal,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
         )
@@ -50,7 +50,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
             glucoseHistory: input.glucoseHistory,
             precomputedInsulin: precomputed,
             carbEntries: input.carbEntries,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
         )
@@ -85,7 +85,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
             doses: input.doses,
             carbEntries: input.carbEntries,
             basal: input.basal,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
         )
@@ -93,14 +93,14 @@ final class PrecomputedInsulinInputTests: XCTestCase {
         // ISF-sweep pattern: annotate once, compute effects per ISF value
         let precomputed = PrecomputedInsulinInput
             .annotate(doses: input.doses, basal: input.basal)
-            .withEffects(sensitivity: input.sensitivity)
+            .withEffects(sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit)
 
         let fast = Algorithm.generatePrediction(
             start: start,
             glucoseHistory: input.glucoseHistory,
             precomputedInsulin: precomputed,
             carbEntries: input.carbEntries,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
         )
@@ -122,7 +122,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
             doses: input.doses,
             carbEntries: input.carbEntries,
             basal: input.basal,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
         )
@@ -135,7 +135,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
             glucoseHistory: input.glucoseHistory,
             precomputedInsulin: sliced,
             carbEntries: input.carbEntries,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
         )
@@ -162,12 +162,12 @@ final class PrecomputedInsulinInputTests: XCTestCase {
 
         for multiplier in multipliers {
             // Scale ISF — O(n_isf_segments), negligible.
-            let scaledSensitivity = input.sensitivity.map { entry in
+            let scaledSensitivity = input.sensitivityMgdlPerUnit.map { entry in
                 AbsoluteScheduleValue(startDate: entry.startDate, endDate: entry.endDate, value: entry.value * multiplier)
             }
 
             // Compute effects once for this ISF value — O(D × T), not per-step
-            let precomputed = base.withEffects(sensitivity: scaledSensitivity)
+            let precomputed = base.withEffects(sensitivityMgdlPerUnit: scaledSensitivity)
             XCTAssertNotNil(precomputed.insulinEffects, "withEffects should populate insulinEffects")
 
             // Verify it produces the same result as the standard path with the same scaled ISF
@@ -177,7 +177,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
                 doses: input.doses,
                 carbEntries: input.carbEntries,
                 basal: input.basal,
-                sensitivity: scaledSensitivity,
+                sensitivityMgdlPerUnit: scaledSensitivity,
                 carbRatio: input.carbRatio,
                 useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
             )
@@ -187,7 +187,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
                 glucoseHistory: input.glucoseHistory,
                 precomputedInsulin: precomputed,
                 carbEntries: input.carbEntries,
-                sensitivity: scaledSensitivity,
+                sensitivityMgdlPerUnit: scaledSensitivity,
                 carbRatio: input.carbRatio,
                 useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
             )

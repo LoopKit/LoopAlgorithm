@@ -173,7 +173,7 @@ final class LoopAlgorithmTests: XCTestCase {
             doses: input.doses,
             carbEntries: input.carbEntries,
             basal: input.basal,
-            sensitivity: input.sensitivity,
+            sensitivityMgdlPerUnit: input.sensitivityMgdlPerUnit,
             carbRatio: input.carbRatio,
             useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
         )
@@ -291,7 +291,7 @@ final class LoopAlgorithmTests: XCTestCase {
         let isfEnd = now.addingTimeInterval(.hours(24))
 
         // ISF Changing mid-aborption
-        input.sensitivity = [
+        input.sensitivityMgdlPerUnit = [
             AbsoluteScheduleValue(startDate: isfStart, endDate: isfMid, value: 50),
             AbsoluteScheduleValue(startDate: isfMid, endDate: isfEnd, value: 100)
         ]
@@ -383,7 +383,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // Sensitivity doubles in one hour
         let isfChangeTime = now.addingTimeInterval(.hours(1))
-        input.sensitivity = [
+        input.sensitivityMgdlPerUnit = [
             AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-48)), endDate: isfChangeTime, value: 50),
             AbsoluteScheduleValue(startDate: isfChangeTime, endDate: now.addingTimeInterval(.hours(48)), value: 100)
         ]
@@ -424,7 +424,7 @@ final class LoopAlgorithmTests: XCTestCase {
         ]
 
         // Sensitivity doesn't cover start of basal dose
-        input.sensitivity = [
+        input.sensitivityMgdlPerUnit = [
             AbsoluteScheduleValue(startDate: now, endDate: now.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration).dateCeiledToTimeInterval(GlucoseMath.defaultDelta), value: 50),
         ]
 
@@ -435,7 +435,7 @@ final class LoopAlgorithmTests: XCTestCase {
         }
 
         // Sensitivity does cover start of basal dose, but ends before temp basal effects end
-        input.sensitivity = [
+        input.sensitivityMgdlPerUnit = [
             AbsoluteScheduleValue(
                 startDate: basalStart.dateFlooredToTimeInterval(GlucoseMath.defaultDelta),
                 endDate: now.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration).dateCeiledToTimeInterval(GlucoseMath.defaultDelta),
@@ -459,7 +459,7 @@ final class LoopAlgorithmTests: XCTestCase {
             glucoseHistoryStart: input.glucoseHistory.first!.startDate,
             recommendationEffectInterval: recommendationEffectInterval
         )
-        input.sensitivity = [
+        input.sensitivityMgdlPerUnit = [
             AbsoluteScheduleValue(
                 startDate: neededISFInterval.start,
                 endDate:  neededISFInterval.end,
@@ -481,7 +481,7 @@ final class LoopAlgorithmTests: XCTestCase {
         var input = try! decoder.decode(AlgorithmInputFixture.self, from: try! Data(contentsOf: url))
 
         // A carb entry older than the start of the carb ratio and ISF timelines
-        let timelinesStart = min(input.carbRatio.first!.startDate, input.sensitivity.first!.startDate)
+        let timelinesStart = min(input.carbRatio.first!.startDate, input.sensitivityMgdlPerUnit.first!.startDate)
         let entryDate = timelinesStart.addingTimeInterval(.minutes(-30))
         input.carbEntries.insert(FixtureCarbEntry(absorptionTime: .hours(3), startDate: entryDate, quantity: .carbs(20)), at: 0)
 
@@ -500,8 +500,8 @@ final class LoopAlgorithmTests: XCTestCase {
             return
         }
 
-        let firstSensitivity = input.sensitivity.first!
-        input.sensitivity.insert(AbsoluteScheduleValue(startDate: entryDate, endDate: firstSensitivity.startDate, value: firstSensitivity.value), at: 0)
+        let firstSensitivity = input.sensitivityMgdlPerUnit.first!
+        input.sensitivityMgdlPerUnit.insert(AbsoluteScheduleValue(startDate: entryDate, endDate: firstSensitivity.startDate, value: firstSensitivity.value), at: 0)
         output = Algorithm.run(input: input)
         guard case .success = output.recommendationResult else {
             XCTFail("Expected recommendationResult success")
@@ -528,7 +528,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
 
         // Sensitivity doesn't cover forecast
-        input.sensitivity = [
+        input.sensitivityMgdlPerUnit = [
             AbsoluteScheduleValue(
                 startDate: basalStart.dateFlooredToTimeInterval(GlucoseMath.defaultDelta),
                 endDate: now.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration).dateCeiledToTimeInterval(GlucoseMath.defaultDelta),
@@ -585,7 +585,7 @@ final class LoopAlgorithmTests: XCTestCase {
         input.predictionStart = input.predictionStart.addingTimeInterval(30)
 
         // Add more time to insulin sensitivity timeline to account for running temp basal
-        input.sensitivity[0].endDate = input.sensitivity[0].endDate.addingTimeInterval(.hours(1))
+        input.sensitivityMgdlPerUnit[0].endDate = input.sensitivityMgdlPerUnit[0].endDate.addingTimeInterval(.hours(1))
 
         // Manual recommendation does not cut off doses in progress, like a running temp basal
         input.recommendationType = .manualBolus

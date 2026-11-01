@@ -15,7 +15,6 @@ public struct FixtureGlucoseSample: GlucoseSampleValue, Equatable {
     public let mgdl: Double
     public let isDisplayOnly: Bool
     public let wasUserEntered: Bool
-    var condition: GlucoseCondition?
 
     public init(
         provenanceIdentifier: String = Self.defaultProvenanceIdentifier,

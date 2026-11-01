@@ -23,14 +23,14 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
 
     // Expected time range coverage: t-16h to t (eventually with mid-absorption isf changes, it will be t-10h to t)
     // Insulin sensitivity in mg/dL per unit
-    public var sensitivity: [AbsoluteScheduleValue<Double>]
+    public var sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>]
 
     // Expected time range coverage: t-10h to t+6h
     public var carbRatio: [AbsoluteScheduleValue<Double>]
 
     // Correction-range timeline. Used only for the IntegralRC integral-correction
     // clamp when `emulation.integralRCClamp` is enabled; may be empty otherwise.
-    public var target: GlucoseRangeTimeline = []
+    public var targetMgdl: GlucoseRangeTimeline = []
 
     public var algorithmEffectsOptions: AlgorithmEffectsOptions
 
@@ -49,9 +49,9 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
         doses: [InsulinDoseType],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<Double>],
+        sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         carbRatio: [AbsoluteScheduleValue<Double>],
-        target: GlucoseRangeTimeline = [],
+        targetMgdl: GlucoseRangeTimeline = [],
         algorithmEffectsOptions: AlgorithmEffectsOptions,
         useIntegralRetrospectiveCorrection: Bool,
         includePositiveVelocityAndRC: Bool,
@@ -64,9 +64,9 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
         self.doses = doses
         self.carbEntries = carbEntries
         self.basal = basal
-        self.sensitivity = sensitivity
+        self.sensitivityMgdlPerUnit = sensitivityMgdlPerUnit
         self.carbRatio = carbRatio
-        self.target = target
+        self.targetMgdl = targetMgdl
         self.algorithmEffectsOptions = algorithmEffectsOptions
         self.useIntegralRetrospectiveCorrection = useIntegralRetrospectiveCorrection
         self.includePositiveVelocityAndRC = includePositiveVelocityAndRC
@@ -78,8 +78,8 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
 
 
 extension LoopPredictionInput {
-    var sensitivityQuantities: [AbsoluteScheduleValue<LoopQuantity>] { sensitivity.mgdlQuantities }
-    var targetQuantities: QuantityRangeTimeline { target.quantities }
+    var sensitivityQuantities: [AbsoluteScheduleValue<LoopQuantity>] { sensitivityMgdlPerUnit.mgdlQuantities }
+    var targetQuantities: QuantityRangeTimeline { targetMgdl.quantities }
 }
 
 extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, GlucoseType == FixtureGlucoseSample, InsulinDoseType == FixtureInsulinDose {
@@ -90,14 +90,14 @@ extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, Gluco
         self.doses = try container.decode([FixtureInsulinDose].self, forKey: .doses)
         self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
-        self.sensitivity = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
+        self.sensitivityMgdlPerUnit = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
         self.carbRatio = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .carbRatio)
-        if let targetMgdl = try container.decodeIfPresent([TargetEntry].self, forKey: .target) {
-            self.target = targetMgdl.map {
+        if let targetEntries = try container.decodeIfPresent([TargetEntry].self, forKey: .target) {
+            self.targetMgdl = targetEntries.map {
                 AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: $0.lowerBound...$0.upperBound)
             }
         } else {
-            self.target = []
+            self.targetMgdl = []
         }
         if let algorithmEffectsOptionsRaw = try container.decodeIfPresent(AlgorithmEffectsOptions.RawValue.self, forKey: .algorithmEffectsOptions) {
             self.algorithmEffectsOptions = AlgorithmEffectsOptions(rawValue: algorithmEffectsOptionsRaw)
@@ -117,17 +117,17 @@ extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, Gluco
         try container.encode(doses, forKey: .doses)
         try container.encode(carbEntries, forKey: .carbEntries)
         try container.encode(basal, forKey: .basal)
-        try container.encode(sensitivity, forKey: .sensitivity)
+        try container.encode(sensitivityMgdlPerUnit, forKey: .sensitivity)
         try container.encode(carbRatio, forKey: .carbRatio)
-        if !target.isEmpty {
-            let targetMgdl = target.map {
+        if !targetMgdl.isEmpty {
+            let targetEntries = targetMgdl.map {
                 TargetEntry(
                     startDate: $0.startDate,
                     endDate: $0.endDate,
                     lowerBound: $0.value.lowerBound,
                     upperBound: $0.value.upperBound)
             }
-            try container.encode(targetMgdl, forKey: .target)
+            try container.encode(targetEntries, forKey: .target)
         }
         if algorithmEffectsOptions != .all {
             try container.encode(algorithmEffectsOptions.rawValue, forKey: .algorithmEffectsOptions)
