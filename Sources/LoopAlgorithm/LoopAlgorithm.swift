@@ -15,6 +15,8 @@ public enum AlgorithmError: Error {
     case sensitivityTimelineStartsTooLate
     case sensitivityTimelineEndsTooEarly
     case futureBasalNotAllowed
+    /// The carb ratio or sensitivity timeline starts after the oldest carb entry.
+    case carbRatioOrSensitivityStartsAfterCarbEntry
 }
 
 public struct LoopAlgorithmEffects<CarbStatusType: CarbEntry> {
@@ -789,6 +791,16 @@ public struct LoopAlgorithm {
             }
             guard let sensitivityEndDate = input.sensitivity.last?.endDate, sensitivityEndDate >= neededISFInterval.end else {
                 throw AlgorithmError.sensitivityTimelineEndsTooEarly
+            }
+
+            // Make sure carb ratio and ISF cover every carb entry
+            if let oldestCarbEntry = input.carbEntries.map({ $0.startDate }).min() {
+                guard
+                    let carbRatioStart = input.carbRatio.first?.startDate, carbRatioStart <= oldestCarbEntry,
+                    let sensitivityStart = input.sensitivity.first?.startDate, sensitivityStart <= oldestCarbEntry
+                else {
+                    throw AlgorithmError.carbRatioOrSensitivityStartsAfterCarbEntry
+                }
             }
 
             // Make sure Basal covers needed timeline
