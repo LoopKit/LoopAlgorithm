@@ -12,15 +12,15 @@ import Foundation
 /// LoopKit's IntegralRetrospectiveCorrection applies: the wound-up integral term
 /// is bounded by an ISF×basal-scaled, correction-range-relative window. All three
 /// values are required for the bound to be well defined, so they travel together.
-public struct IntegralRCClampSettings {
+struct IntegralRCClampSettings {
     /// Insulin sensitivity at decision time
-    public var insulinSensitivity: LoopQuantity
+    var insulinSensitivity: LoopQuantity
     /// Scheduled basal rate at decision time, in U/hr
-    public var basalRate: Double
+    var basalRate: Double
     /// Correction range at decision time
-    public var correctionRange: ClosedRange<LoopQuantity>
+    var correctionRange: ClosedRange<LoopQuantity>
 
-    public init(insulinSensitivity: LoopQuantity, basalRate: Double, correctionRange: ClosedRange<LoopQuantity>) {
+    init(insulinSensitivity: LoopQuantity, basalRate: Double, correctionRange: ClosedRange<LoopQuantity>) {
         self.insulinSensitivity = insulinSensitivity
         self.basalRate = basalRate
         self.correctionRange = correctionRange
@@ -28,7 +28,7 @@ public struct IntegralRCClampSettings {
 }
 
 /// Derives a continued glucose effect from recent prediction discrepancies
-public protocol RetrospectiveCorrection {
+protocol RetrospectiveCorrection {
 
     /// Overall retrospective correction effect
     var totalGlucoseCorrectionEffect: LoopQuantity? { get }

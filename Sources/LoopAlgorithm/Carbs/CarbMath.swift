@@ -360,7 +360,7 @@ extension Collection {
         return values
     }
 
-    public func dynamicGlucoseEffects<T>(
+    func dynamicGlucoseEffects<T>(
         from start: Date? = nil,
         to end: Date? = nil,
         carbRatios: [AbsoluteScheduleValue<Double>],
@@ -688,7 +688,7 @@ extension Collection where Element: CarbEntry {
     ///   - defaultAbsorptionTime: The absorption time to use for unspecified carb entries
     ///   - delay: The time to delay the dose effect
     /// - Returns: A new array of `CarbStatus` values describing the absorbed carb quantities
-    public func map(
+    func map(
         to effectVelocities: [GlucoseEffectVelocity],
         carbRatio: [AbsoluteScheduleValue<Double>],
         insulinSensitivity: [AbsoluteScheduleValue<LoopQuantity>],
@@ -788,5 +788,43 @@ extension Collection where Element: CarbEntry {
         }
 
         return builders.map { $0.result }
+    }
+}
+
+public extension Collection {
+    /// Carb effects from absorption status. Sensitivity is in mg/dL per unit.
+    func dynamicGlucoseEffects<T>(
+        from start: Date? = nil,
+        to end: Date? = nil,
+        carbRatios: [AbsoluteScheduleValue<Double>],
+        insulinSensitivitiesMgdlPerUnit: [AbsoluteScheduleValue<Double>],
+        defaultAbsorptionTime: TimeInterval = CarbMath.defaultAbsorptionTime,
+        absorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption(),
+        delay: TimeInterval = CarbMath.defaultEffectDelay,
+        delta: TimeInterval = GlucoseMath.defaultDelta
+    ) -> [GlucoseEffect] where Element == CarbStatus<T> {
+        dynamicGlucoseEffects(from: start, to: end, carbRatios: carbRatios, insulinSensitivities: insulinSensitivitiesMgdlPerUnit.mgdlQuantities,
+                              defaultAbsorptionTime: defaultAbsorptionTime, absorptionModel: absorptionModel, delay: delay, delta: delta)
+    }
+}
+
+public extension Collection where Element: CarbEntry {
+    /// Maps carb entries to observed absorption. Sensitivity is in mg/dL per unit.
+    func map(
+        to effectVelocities: [GlucoseEffectVelocity],
+        carbRatio: [AbsoluteScheduleValue<Double>],
+        insulinSensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>],
+        absorptionTimeOverrun: Double = CarbMath.defaultAbsorptionTimeOverrun,
+        defaultAbsorptionTime: TimeInterval = CarbMath.defaultAbsorptionTime,
+        delay: TimeInterval = CarbMath.defaultEffectDelay,
+        initialAbsorptionTimeOverrun: Double = CarbMath.defaultAbsorptionTimeOverrun,
+        absorptionModel: CarbAbsorptionComputable = PiecewiseLinearAbsorption(),
+        adaptiveAbsorptionRateEnabled: Bool = false,
+        adaptiveRateStandbyIntervalFraction: Double = 0.2
+    ) -> [CarbStatus<Element>] {
+        map(to: effectVelocities, carbRatio: carbRatio, insulinSensitivity: insulinSensitivityMgdlPerUnit.mgdlQuantities,
+            absorptionTimeOverrun: absorptionTimeOverrun, defaultAbsorptionTime: defaultAbsorptionTime, delay: delay,
+            initialAbsorptionTimeOverrun: initialAbsorptionTimeOverrun, absorptionModel: absorptionModel,
+            adaptiveAbsorptionRateEnabled: adaptiveAbsorptionRateEnabled, adaptiveRateStandbyIntervalFraction: adaptiveRateStandbyIntervalFraction)
     }
 }

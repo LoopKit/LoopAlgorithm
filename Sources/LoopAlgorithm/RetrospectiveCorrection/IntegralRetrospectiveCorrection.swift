@@ -14,14 +14,14 @@ import Foundation
     In the above summary, "discrepancy" is a difference between the actual glucose and the model predicted glucose over retrospective correction grouping interval (set to 30 min in LoopSettings), whereas "past discrepancies" refers to a timeline of discrepancies computed over retrospective correction integration interval (set to 180 min in Loop Settings).
  
  */
-public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
-    public static let retrospectionInterval = TimeInterval(minutes: 180)
+class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
+    static let retrospectionInterval = TimeInterval(minutes: 180)
 
     /// RetrospectiveCorrection protocol variables
     /// Standard effect duration
     let effectDuration: TimeInterval
     /// Overall retrospective correction effect
-    public var totalGlucoseCorrectionEffect: LoopQuantity?
+    var totalGlucoseCorrectionEffect: LoopQuantity?
     
     /**
      Integral retrospective correction parameters:
@@ -52,11 +52,11 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
     /// unmodeled glucose velocity (~4 mg/dL/min); unlike a bound scaled by ISF/basal/target,
     /// it does not depend on the user's dosing settings — the plausible velocity of unmodeled
     /// physiology is the same regardless of a person's insulin needs or target range.
-    public static let defaultMaxCorrectionVelocity = LoopQuantity(
+    static let defaultMaxCorrectionVelocity = LoopQuantity(
         unit: .milligramsPerDeciliterPerSecond, doubleValue: 4.0 / 60.0)
 
     /// Ceiling applied to the correction rate (see `defaultMaxCorrectionVelocity`); nil disables it.
-    public let maxCorrectionVelocity: LoopQuantity?
+    let maxCorrectionVelocity: LoopQuantity?
 
     /// Emulate pre-#33 (deployed Loop) step-by-step decay for the RC effect timeline.
     let useLegacyDecay: Bool
@@ -78,7 +78,7 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
     /// the post-low rise-cut (see `ExperimentOption`). 1.0 is standard IRC.
     let riseScale: Double
 
-    public init(effectDuration: TimeInterval,
+    init(effectDuration: TimeInterval,
                 maxCorrectionVelocity: LoopQuantity? = IntegralRetrospectiveCorrection.defaultMaxCorrectionVelocity,
                 useLegacyDecay: Bool = false,
                 riseScale: Double = 1.0) {
@@ -98,7 +98,7 @@ public class IntegralRetrospectiveCorrection: RetrospectiveCorrection {
      - Returns:
      - totalRetrospectiveCorrection: Overall glucose effect
      */
-    public func computeEffect(
+    func computeEffect(
         startingAt startingGlucose: GlucoseValue,
         retrospectiveGlucoseDiscrepanciesSummed: [GlucoseChange]?,
         recencyInterval: TimeInterval,

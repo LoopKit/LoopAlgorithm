@@ -12,24 +12,33 @@ public struct FixtureGlucoseSample: GlucoseSampleValue, Equatable {
 
     public let provenanceIdentifier: String
     public let startDate: Date
-    public let quantity: LoopQuantity
+    public let mgdl: Double
     public let isDisplayOnly: Bool
     public let wasUserEntered: Bool
-    public var condition: GlucoseCondition?
-    public var trendRate: LoopQuantity?
 
     public init(
+        provenanceIdentifier: String = Self.defaultProvenanceIdentifier,
+        startDate: Date,
+        mgdl: Double,
+        isDisplayOnly: Bool = false,
+        wasUserEntered: Bool = false
+    ) {
+        self.provenanceIdentifier = provenanceIdentifier
+        self.startDate = startDate
+        self.mgdl = mgdl
+        self.isDisplayOnly = isDisplayOnly
+        self.wasUserEntered = wasUserEntered
+    }
+
+    init(
         provenanceIdentifier: String = Self.defaultProvenanceIdentifier,
         startDate: Date,
         quantity: LoopQuantity,
         isDisplayOnly: Bool = false,
         wasUserEntered: Bool = false
     ) {
-        self.provenanceIdentifier = provenanceIdentifier
-        self.startDate = startDate
-        self.quantity = quantity
-        self.isDisplayOnly = isDisplayOnly
-        self.wasUserEntered = wasUserEntered
+        self.init(provenanceIdentifier: provenanceIdentifier, startDate: startDate, mgdl: quantity.doubleValue(for: .milligramsPerDeciliter),
+                  isDisplayOnly: isDisplayOnly, wasUserEntered: wasUserEntered)
     }
 }
 
@@ -43,7 +52,7 @@ extension FixtureGlucoseSample: Codable {
 
         self.init(provenanceIdentifier: provenanceIdentifier,
                   startDate: try container.decode(Date.self, forKey: .date),
-                  quantity: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: try container.decode(Double.self, forKey: .value)),
+                  mgdl: try container.decode(Double.self, forKey: .value),
                   isDisplayOnly: isDisplayOnly,
                   wasUserEntered: wasUserEntered
         )
@@ -55,7 +64,7 @@ extension FixtureGlucoseSample: Codable {
             try container.encode(provenanceIdentifier, forKey: .provenanceIdentifier)
         }
         try container.encode(startDate, forKey: .date)
-        try container.encode(quantity.doubleValue(for: .milligramsPerDeciliter), forKey: .value)
+        try container.encode(mgdl, forKey: .value)
         if isDisplayOnly {
             try container.encode(isDisplayOnly, forKey: .isDisplayOnly)
         }

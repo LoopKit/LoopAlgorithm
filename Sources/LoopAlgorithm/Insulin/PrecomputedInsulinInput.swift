@@ -20,9 +20,10 @@
 // │   let base = PrecomputedInsulinInput.annotate(doses: doses, basal: basal)│
 // │   for multiplier in [0.7, 0.8, 0.9, 1.0, 1.1, ...] {                   │
 // │     let scaled = scaledSensitivity(sensitivity, by: multiplier)          │
-// │     let input  = base.withEffects(sensitivity: scaled)  // O(D×T) once  │
+// │     let input  = base.withEffects(sensitivityMgdlPerUnit: scaled)        │
+// │                                                   // O(D×T) once         │
 // │     for t in sweepSteps {                                                │
-// │       let result = LoopAlgorithm.generatePrediction(                    │
+// │       let result = Algorithm.generatePrediction(                        │
 // │         start: t, ..., precomputedInsulin: input, ...)  // no annotation │
 // │     }                                                                    │
 // │   }                                                                      │
@@ -58,10 +59,10 @@ private extension Array {
 ///
 /// // 2. For each ISF value: compute effects once, sweep all time steps
 /// for multiplier in isfMultipliers {
-///     let input = base.withEffects(sensitivity: scale(sensitivity, by: multiplier),
-///                                  from: sweepStart, to: sweepEnd + activityDuration)
+///     let input = base.withEffects(sensitivityMgdlPerUnit: scale(sensitivity, by: multiplier),
+///                                             from: sweepStart, to: sweepEnd + activityDuration)
 ///     for t in sweepSteps {
-///         let prediction = LoopAlgorithm.generatePrediction(
+///         let prediction = Algorithm.generatePrediction(
 ///             start: t, glucoseHistory: cgm[t], precomputedInsulin: input, ...)
 ///     }
 /// }
@@ -86,13 +87,13 @@ public struct PrecomputedInsulinInput {
     /// When non-nil, `generatePrediction` uses this directly instead of
     /// calling `glucoseEffects(insulinSensitivityHistory:from:to:)`.
     ///
-    /// **ISF sweeps:** rebuild this once per multiplier using `withEffects(sensitivity:)`.
+    /// **ISF sweeps:** rebuild this once per multiplier using `withEffects(sensitivityMgdlPerUnit:)`.
     /// The `annotatedDoses` array is unchanged and does not need to be rebuilt.
     ///
     /// **Timeline coverage:** must cover
     /// `[glucoseHistory.first.startDate, sweepEnd + defaultInsulinActivityDuration]`
     /// for all steps in the sweep.  Pass a generous `to:` date when calling
-    /// `withEffects(sensitivity:from:to:)`.
+    /// `withEffects(sensitivityMgdlPerUnit:from:to:)`.
     public var insulinEffects: [GlucoseEffect]?
 
     // MARK: - Init
@@ -117,7 +118,7 @@ extension PrecomputedInsulinInput {
     ///   - doses: All insulin doses for the sweep window, sorted by startDate.
     ///   - basal: Scheduled basal timeline covering the same window.
     /// - Returns: A `PrecomputedInsulinInput` with `insulinEffects == nil`.
-    ///   Call `withEffects(sensitivity:from:to:)` before passing to
+    ///   Call `withEffects(sensitivityMgdlPerUnit:from:to:)` before passing to
     ///   `generatePrediction`.
     public static func annotate<DoseType: InsulinDose>(
         doses: [DoseType],
@@ -133,7 +134,7 @@ extension PrecomputedInsulinInput {
     /// pass the result into every `generatePrediction` call for that multiplier.
     ///
     /// - Parameters:
-    ///   - sensitivity: The (possibly scaled) ISF timeline for this sweep config.
+    ///   - sensitivityMgdlPerUnit: The (possibly scaled) ISF timeline for this sweep config, in mg/dL per unit.
     ///   - from: Start of the effect timeline.  Defaults to earliest dose start.
     ///     Should be <= `glucoseHistory.first.startDate` for the first eval step.
     ///   - to: End of the effect timeline.  Should cover
@@ -142,11 +143,12 @@ extension PrecomputedInsulinInput {
     ///   - useMidAbsorptionISF: Use mid-absorption ISF computation.
     /// - Returns: A new `PrecomputedInsulinInput` with `insulinEffects` populated.
     public func withEffects(
-        sensitivity: [AbsoluteScheduleValue<LoopQuantity>],
+        sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>],
         from: Date? = nil,
         to: Date? = nil,
         useMidAbsorptionISF: Bool = false
     ) -> PrecomputedInsulinInput {
+        let sensitivity = sensitivityMgdlPerUnit.mgdlQuantities
         let effects: [GlucoseEffect]
         if useMidAbsorptionISF {
             effects = annotatedDoses.glucoseEffectsMidAbsorptionISF(
@@ -193,20 +195,20 @@ extension PrecomputedInsulinInput {
     /// Convenience: annotate and compute effects in one call.
     ///
     /// Use when running a single config (no ISF sweep).  For ISF sweeps,
-    /// prefer `annotate(doses:basal:)` + `withEffects(sensitivity:from:to:)`
+    /// prefer `annotate(doses:basal:)` + `withEffects(sensitivityMgdlPerUnit:from:to:)`
     /// so annotation cost is paid only once.
     public static func build<DoseType: InsulinDose>(
         doses: [DoseType],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<LoopQuantity>]? = nil,
+        sensitivityMgdlPerUnit: [AbsoluteScheduleValue<Double>]? = nil,
         effectsFrom: Date? = nil,
         effectsTo: Date? = nil,
         useMidAbsorptionISF: Bool = false
     ) -> PrecomputedInsulinInput {
         let base = annotate(doses: doses, basal: basal)
-        guard let sensitivity else { return base }
+        guard let sensitivityMgdlPerUnit else { return base }
         return base.withEffects(
-            sensitivity: sensitivity,
+            sensitivityMgdlPerUnit: sensitivityMgdlPerUnit,
             from: effectsFrom,
             to: effectsTo,
             useMidAbsorptionISF: useMidAbsorptionISF

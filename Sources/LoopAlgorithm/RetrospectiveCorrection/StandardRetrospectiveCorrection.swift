@@ -13,14 +13,14 @@ import Foundation
  
  In the above summary, "discrepancy" is a difference between the actual glucose and the model predicted glucose over retrospective correction grouping interval (set to 30 min in LoopSettings)
  */
-public class StandardRetrospectiveCorrection: RetrospectiveCorrection {
+class StandardRetrospectiveCorrection: RetrospectiveCorrection {
     /// RetrospectiveCorrection protocol variables
     /// Standard effect duration
     let effectDuration: TimeInterval
     /// Emulate pre-#33 (deployed Loop) step-by-step decay for the RC effect timeline.
     let useLegacyDecay: Bool
     /// Overall retrospective correction effect
-    public var totalGlucoseCorrectionEffect: LoopQuantity?
+    var totalGlucoseCorrectionEffect: LoopQuantity?
 
     /// All math is performed with glucose expressed in mg/dL
     private let unit = LoopUnit.milligramsPerDeciliter
@@ -29,13 +29,13 @@ public class StandardRetrospectiveCorrection: RetrospectiveCorrection {
     /// `ExperimentOption`). 1.0 is standard RC.
     let riseScale: Double
 
-    public init(effectDuration: TimeInterval, useLegacyDecay: Bool = false, riseScale: Double = 1.0) {
+    init(effectDuration: TimeInterval, useLegacyDecay: Bool = false, riseScale: Double = 1.0) {
         self.effectDuration = effectDuration
         self.useLegacyDecay = useLegacyDecay
         self.riseScale = riseScale
     }
 
-    public func computeEffect(
+    func computeEffect(
         startingAt startingGlucose: GlucoseValue,
         retrospectiveGlucoseDiscrepanciesSummed: [GlucoseChange]?,
         recencyInterval: TimeInterval,

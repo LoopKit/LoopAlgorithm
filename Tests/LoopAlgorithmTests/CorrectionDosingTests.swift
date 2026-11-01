@@ -18,7 +18,7 @@ class CorrectionDosingTests: XCTestCase {
     let suspendThreshold: LoopQuantity = .glucose(55)
     let maxBasalRate = 3.0
 
-    var target: GlucoseRangeTimeline!
+    var target: QuantityRangeTimeline!
     var sensitivity: [AbsoluteScheduleValue<LoopQuantity>]!
     let basalRate = 1.0
     let insulinModel = ExponentialInsulinModelPreset.rapidActingAdult
@@ -43,7 +43,7 @@ class CorrectionDosingTests: XCTestCase {
 
 
     func testNoChange() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.noChangePrediction(),
             at: testDate,
             target: target,
@@ -52,7 +52,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -64,7 +64,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, basalRate)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.5,
             neutralBasalRate: basalRate,
@@ -77,7 +77,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.bolusUnits, 0)
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -89,7 +89,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testStartHighEndInRange() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.startHighEndInRangePrediction(),
             at: testDate,
             target: target,
@@ -98,7 +98,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -110,7 +110,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, basalRate)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.5,
             neutralBasalRate: basalRate,
@@ -123,7 +123,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.bolusUnits, 0)
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -135,7 +135,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testStartLowEndInRange() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.startLowEndInRangePrediction(),
             at: testDate,
             target: target,
@@ -144,7 +144,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -156,7 +156,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 1)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -170,7 +170,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -182,7 +182,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testCorrectLowAtMin() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.correctLowAtMin(),
             at: testDate,
             target: target,
@@ -191,7 +191,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -203,7 +203,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 1)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -217,7 +217,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -230,7 +230,7 @@ class CorrectionDosingTests: XCTestCase {
 
 
     func testStartHighEndLow() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.startHighEndLow(),
             at: testDate,
             target: target,
@@ -239,7 +239,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -251,7 +251,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 0)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -265,7 +265,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, 0)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -281,7 +281,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testStartLowEndHigh() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.startLowEndHigh(),
             at: testDate,
             target: target,
@@ -290,7 +290,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -302,7 +302,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 1.0)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -316,7 +316,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -332,7 +332,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testFlatAndHigh() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.flatAndHigh(),
             at: testDate,
             target: target,
@@ -341,7 +341,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -353,7 +353,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 3.0)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -367,7 +367,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -380,7 +380,7 @@ class CorrectionDosingTests: XCTestCase {
 
 
     func testHighAndFalling() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.highAndFalling(),
             at: testDate,
             target: target,
@@ -389,7 +389,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -401,7 +401,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 1.63, accuracy: 0.05)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -415,7 +415,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -427,7 +427,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testInRangeAndRising() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.inRangeAndRising(),
             at: testDate,
             target: target,
@@ -436,7 +436,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -448,7 +448,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 1.63, accuracy: 0.05)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -462,7 +462,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -474,7 +474,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testHighAndRising() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.highAndRising(),
             at: testDate,
             target: target,
@@ -483,7 +483,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -495,7 +495,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 3.0, accuracy: 0.05)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -509,7 +509,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, basalRate)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -521,7 +521,7 @@ class CorrectionDosingTests: XCTestCase {
     }
 
     func testVeryLowAndRising() {
-        let correction = LoopAlgorithm.insulinCorrection(
+        let correction = Algorithm.insulinCorrection(
             prediction: PredictedGlucoseMocks.veryLowAndRising(),
             at: testDate,
             target: target,
@@ -530,7 +530,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let recommendation = LoopAlgorithm.recommendTempBasal(
+        let recommendation = Algorithm.recommendTempBasal(
             for: correction,
             neutralBasalRate: basalRate,
             activeInsulin: 0,
@@ -542,7 +542,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(recommendation.unitsPerHour, 0, accuracy: 0.05)
         XCTAssertEqual(recommendation.duration, .minutes(30))
 
-        let automaticDose = LoopAlgorithm.recommendAutomaticDose(
+        let automaticDose = Algorithm.recommendAutomaticDose(
             for: correction,
             applicationFactor: 0.4,
             neutralBasalRate: basalRate,
@@ -556,7 +556,7 @@ class CorrectionDosingTests: XCTestCase {
         XCTAssertEqual(automaticDose.basalAdjustment.unitsPerHour, 0)
         XCTAssertEqual(automaticDose.basalAdjustment.duration, .minutes(30))
 
-        let manualDose = LoopAlgorithm.recommendManualBolus(
+        let manualDose = Algorithm.recommendManualBolus(
             for: correction,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: PredictedGlucoseMocks.testDate, quantity: .glucose(120)),
@@ -580,7 +580,7 @@ class CorrectionDosingTests: XCTestCase {
 
         // Target switches from 90-120 to 150-170 at t+2h; predicted points beyond
         // the boundary are already in range, so they should require no correction.
-        let steppedTarget: GlucoseRangeTimeline = [
+        let steppedTarget: QuantityRangeTimeline = [
             AbsoluteScheduleValue(
                 startDate: testDate.addingTimeInterval(.hours(-24)),
                 endDate: testDate.addingTimeInterval(.hours(2)),
@@ -593,7 +593,7 @@ class CorrectionDosingTests: XCTestCase {
             )
         ]
 
-        let uniformCorrection = LoopAlgorithm.insulinCorrection(
+        let uniformCorrection = Algorithm.insulinCorrection(
             prediction: prediction,
             at: testDate,
             target: target,
@@ -602,7 +602,7 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let steppedCorrection = LoopAlgorithm.insulinCorrection(
+        let steppedCorrection = Algorithm.insulinCorrection(
             prediction: prediction,
             at: testDate,
             target: steppedTarget,
@@ -611,14 +611,14 @@ class CorrectionDosingTests: XCTestCase {
             insulinModel: insulinModel
         )
 
-        let uniformDose = LoopAlgorithm.recommendManualBolus(
+        let uniformDose = Algorithm.recommendManualBolus(
             for: uniformCorrection,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: testDate, quantity: .glucose(160)),
             target: target
         )
 
-        let steppedDose = LoopAlgorithm.recommendManualBolus(
+        let steppedDose = Algorithm.recommendManualBolus(
             for: steppedCorrection,
             maxBolus: 6,
             currentGlucose: FixtureGlucoseSample(startDate: testDate, quantity: .glucose(160)),

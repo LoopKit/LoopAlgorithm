@@ -8,23 +8,35 @@
 import Foundation
 
 public protocol GlucoseValue: SampleValue {
+    /// The glucose value in mg/dL
+    var mgdl: Double { get }
+}
+
+extension GlucoseValue {
+    var quantity: LoopQuantity {
+        LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: mgdl)
+    }
 }
 
 public struct SimpleGlucoseValue: Equatable, GlucoseValue {
     public let startDate: Date
     public let endDate: Date
-    public let quantity: LoopQuantity
+    public let mgdl: Double
 
-    public init(startDate: Date, endDate: Date? = nil, quantity: LoopQuantity) {
+    public init(startDate: Date, endDate: Date? = nil, mgdl: Double) {
         self.startDate = startDate
         self.endDate = endDate ?? startDate
-        self.quantity = quantity
+        self.mgdl = mgdl
+    }
+
+    init(startDate: Date, endDate: Date? = nil, quantity: LoopQuantity) {
+        self.init(startDate: startDate, endDate: endDate, mgdl: quantity.doubleValue(for: .milligramsPerDeciliter))
     }
 
     public init(_ glucoseValue: GlucoseValue) {
         self.startDate = glucoseValue.startDate
         self.endDate = glucoseValue.endDate
-        self.quantity = glucoseValue.quantity
+        self.mgdl = glucoseValue.mgdl
     }
 }
 
@@ -33,8 +45,8 @@ extension SimpleGlucoseValue: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.startDate = try container.decode(Date.self, forKey: .startDate)
         self.endDate = try container.decodeIfPresent(Date.self, forKey: .endDate) ?? self.startDate
-        self.quantity = LoopQuantity(unit: LoopUnit(from: try container.decode(String.self, forKey: .quantityUnit)),
-                                   doubleValue: try container.decode(Double.self, forKey: .quantity))
+        self.mgdl = LoopQuantity(unit: LoopUnit(from: try container.decode(String.self, forKey: .quantityUnit)),
+                                 doubleValue: try container.decode(Double.self, forKey: .quantity)).doubleValue(for: .milligramsPerDeciliter)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -43,7 +55,7 @@ extension SimpleGlucoseValue: Codable {
         if endDate != startDate {
             try container.encode(endDate, forKey: .endDate)
         }
-        try container.encode(quantity.doubleValue(for: .milligramsPerDeciliter), forKey: .quantity)
+        try container.encode(mgdl, forKey: .quantity)
         try container.encode(LoopUnit.milligramsPerDeciliter.unitString, forKey: .quantityUnit)
     }
 
@@ -57,11 +69,15 @@ extension SimpleGlucoseValue: Codable {
 
 public struct PredictedGlucoseValue: Equatable, GlucoseValue {
     public let startDate: Date
-    public let quantity: LoopQuantity
+    public let mgdl: Double
 
-    public init(startDate: Date, quantity: LoopQuantity) {
+    public init(startDate: Date, mgdl: Double) {
         self.startDate = startDate
-        self.quantity = quantity
+        self.mgdl = mgdl
+    }
+
+    init(startDate: Date, quantity: LoopQuantity) {
+        self.init(startDate: startDate, mgdl: quantity.doubleValue(for: .milligramsPerDeciliter))
     }
 }
 
@@ -69,14 +85,14 @@ extension PredictedGlucoseValue: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.startDate = try container.decode(Date.self, forKey: .startDate)
-        self.quantity = LoopQuantity(unit: LoopUnit(from: try container.decode(String.self, forKey: .quantityUnit)),
-                                   doubleValue: try container.decode(Double.self, forKey: .quantity))
+        self.mgdl = LoopQuantity(unit: LoopUnit(from: try container.decode(String.self, forKey: .quantityUnit)),
+                                 doubleValue: try container.decode(Double.self, forKey: .quantity)).doubleValue(for: .milligramsPerDeciliter)
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(startDate, forKey: .startDate)
-        try container.encode(quantity.doubleValue(for: .milligramsPerDeciliter), forKey: .quantity)
+        try container.encode(mgdl, forKey: .quantity)
         try container.encode(LoopUnit.milligramsPerDeciliter.unitString, forKey: .quantityUnit)
     }
 

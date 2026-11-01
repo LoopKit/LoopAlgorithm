@@ -17,7 +17,7 @@ public struct InsulinValue: TimelineValue, Equatable {
         self.value = value
     }
 
-    public var quantity: LoopQuantity {
+    var quantity: LoopQuantity {
         LoopQuantity(unit: .internationalUnit, doubleValue: value)
     }
 }

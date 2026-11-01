@@ -21,8 +21,9 @@ public extension TimelineValue {
 }
 
 
+/// A timeline value with an amount. Each refinement names its amount in a fixed unit, such as
+/// `GlucoseValue.mgdl` or `CarbEntry.grams`.
 public protocol SampleValue: TimelineValue {
-    var quantity: LoopQuantity { get }
 }
 
 
@@ -89,8 +90,7 @@ public extension Sequence where Element: TimelineValue {
      This behavior mimics HKQueryOptionNone, where the value must merely overlap the specified range,
      not strictly exist inside of it.
 
-     - parameter startDate: The earliest date of elements to return
-     - parameter endDate:   The latest date of elements to return
+     - parameter interval: The date interval elements must overlap
 
      - returns: A new array of elements
      */

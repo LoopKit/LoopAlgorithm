@@ -9,6 +9,23 @@ Please understand that this project:
 * Is highly experimental
 * Is not approved for therapy
 
+## Usage
+
+The entry point is `Algorithm.run(input:)`, which takes any type conforming to `AlgorithmInput` and returns the
+glucose forecast, the effects behind it, and a dose recommendation. The API takes plain numbers in fixed units:
+
+| Quantity | Unit |
+|---|---|
+| Glucose, targets, suspend threshold | mg/dL |
+| Insulin sensitivity | mg/dL per unit |
+| Carbs | grams |
+| Carb ratio | grams per unit |
+| Insulin | units |
+| Basal rates | U/h |
+
+Apps that store values in other units (mmol/L) convert before calling. `Algorithm.generatePrediction` produces a
+forecast without a recommendation.
+
 ## Command Line Runner
 
 There is a command line utility that will run the algorithm with a scenario input file:

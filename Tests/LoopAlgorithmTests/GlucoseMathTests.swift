@@ -17,21 +17,20 @@ extension XCTestCase {
 
 public struct GlucoseFixtureValue: GlucoseSampleValue {
     public let startDate: Date
-    public let quantity: LoopQuantity
+    let quantity: LoopQuantity
+    public var mgdl: Double { quantity.doubleValue(for: .milligramsPerDeciliter) }
     public let isDisplayOnly: Bool
     public let wasUserEntered: Bool
     public let provenanceIdentifier: String
-    public let condition: GlucoseCondition?
-    public let trendRate: LoopQuantity?
+    let trendRate: LoopQuantity?
     public var syncIdentifier: String?
 
-    public init(startDate: Date, quantity: LoopQuantity, isDisplayOnly: Bool, wasUserEntered: Bool, provenanceIdentifier: String?, condition: GlucoseCondition?, trendRate: LoopQuantity?) {
+    init(startDate: Date, quantity: LoopQuantity, isDisplayOnly: Bool, wasUserEntered: Bool, provenanceIdentifier: String?, trendRate: LoopQuantity?) {
         self.startDate = startDate
         self.quantity = quantity
         self.isDisplayOnly = isDisplayOnly
         self.wasUserEntered = wasUserEntered
         self.provenanceIdentifier = provenanceIdentifier ?? "com.loopkit.LoopKitTests"
-        self.condition = condition
         self.trendRate = trendRate
     }
 }
@@ -49,10 +48,10 @@ final class GlucoseMathTests: XCTestCase {
     private struct MockGlucoseSample: GlucoseSampleValue {
         var startDate: Date
         var quantity: LoopQuantity
+        var mgdl: Double { quantity.doubleValue(for: .milligramsPerDeciliter) }
         var provenanceIdentifier: String
         var isDisplayOnly: Bool
         var wasUserEntered: Bool
-        var condition: GlucoseCondition?
         var trendRate: LoopQuantity?
     }
 
@@ -66,7 +65,6 @@ final class GlucoseMathTests: XCTestCase {
             provenanceIdentifier: provenance,
             isDisplayOnly: displayOnly,
             wasUserEntered: false,
-            condition: nil,
             trendRate: nil
         )
     }
@@ -213,7 +211,6 @@ final class GlucoseMathTests: XCTestCase {
                 isDisplayOnly: ($0["display_only"] as? Bool) ?? false,
                 wasUserEntered: ($0["user_entered"] as? Bool) ?? false,
                 provenanceIdentifier: $0["provenance_identifier"] as? String,
-                condition: ($0["condition"] as? String).flatMap { GlucoseCondition(rawValue: $0) },
                 trendRate: ($0["trend_rate"] as? Double).flatMap { LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0) }
             )
         }
@@ -429,7 +426,6 @@ final class GlucoseMathTests: XCTestCase {
             isDisplayOnly: false,
             wasUserEntered: true,
             provenanceIdentifier: nil,
-            condition: nil,
             trendRate: nil
         )
     }

@@ -8,7 +8,7 @@
 
 import Foundation
 
-public enum InsulinCorrection {
+enum InsulinCorrection {
     case inRange
     case aboveRange(min: GlucoseValue, correcting: GlucoseValue, minTarget: LoopQuantity, units: Double)
     case entirelyBelowRange(min: GlucoseValue, minTarget: LoopQuantity, units: Double)
@@ -149,7 +149,35 @@ private func targetGlucoseValue(percentEffectDuration: Double, minValue: Double,
     return minValue + slope * (percentEffectDuration - useMinValueUntilPercent)
 }
 
-public typealias GlucoseRangeTimeline = [AbsoluteScheduleValue<ClosedRange<LoopQuantity>>]
+/// Glucose target ranges over time, in mg/dL
+public typealias GlucoseRangeTimeline = [AbsoluteScheduleValue<ClosedRange<Double>>]
+
+typealias QuantityRangeTimeline = [AbsoluteScheduleValue<ClosedRange<LoopQuantity>>]
+
+extension Array where Element == AbsoluteScheduleValue<ClosedRange<Double>> {
+    var quantities: QuantityRangeTimeline {
+        map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: LoopQuantity.mgdl($0.value.lowerBound)...LoopQuantity.mgdl($0.value.upperBound)) }
+    }
+}
+
+extension Array where Element == AbsoluteScheduleValue<ClosedRange<LoopQuantity>> {
+    var mgdl: GlucoseRangeTimeline {
+        map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: $0.value.lowerBound.doubleValue(for: .milligramsPerDeciliter)...$0.value.upperBound.doubleValue(for: .milligramsPerDeciliter)) }
+    }
+}
+
+extension Array where Element == AbsoluteScheduleValue<Double> {
+    /// Treats the values as mg/dL (for insulin sensitivity, mg/dL per unit)
+    var mgdlQuantities: [AbsoluteScheduleValue<LoopQuantity>] {
+        map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: LoopQuantity.mgdl($0.value)) }
+    }
+}
+
+extension Array where Element == AbsoluteScheduleValue<LoopQuantity> {
+    var mgdl: [AbsoluteScheduleValue<Double>] {
+        map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: $0.value.doubleValue(for: .milligramsPerDeciliter)) }
+    }
+}
 
 extension Array where Element: GlucoseValue {
 
@@ -164,7 +192,7 @@ extension Array where Element: GlucoseValue {
     ///   - model: The insulin effect model
     /// - Returns: A correction value in units, or nil if no correction needed
     func insulinCorrection(
-        to correctionRange: GlucoseRangeTimeline,
+        to correctionRange: QuantityRangeTimeline,
         at date: Date,
         suspendThreshold: LoopQuantity,
         insulinSensitivity: [AbsoluteScheduleValue<LoopQuantity>],

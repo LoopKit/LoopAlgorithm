@@ -7,17 +7,21 @@
 
 import Foundation
 
-public struct LoopQuantity: Hashable, Equatable, Comparable, Sendable {
+struct LoopQuantity: Hashable, Equatable, Comparable, Sendable {
 
-    public let unit: LoopUnit
+    let unit: LoopUnit
     private let value: Double
     
-    public init(unit: LoopUnit, doubleValue value: Double) {
+    init(unit: LoopUnit, doubleValue value: Double) {
         self.unit = unit
         self.value = value
     }
+
+    static func mgdl(_ value: Double) -> LoopQuantity {
+        LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: value)
+    }
     
-    public func `is`(compatibleWith unit: LoopUnit) -> Bool {
+    func `is`(compatibleWith unit: LoopUnit) -> Bool {
         self.unit.conversionFactor(toUnit: unit) != nil
     }
     
@@ -26,7 +30,7 @@ public struct LoopQuantity: Hashable, Equatable, Comparable, Sendable {
      @abstract      Returns the quantity value converted to the given unit.
      @discussion    Throws an exception if the receiver's value cannot be converted to one of the requested unit.
      */
-    public func doubleValue(for unit: LoopUnit) -> Double {
+    func doubleValue(for unit: LoopUnit) -> Double {
         guard let conversionFactor = self.unit.conversionFactor(toUnit: unit) else {
             fatalError("Conversion Error: \(self.unit.unitString) is not compatible with \(unit.unitString).")
         }
@@ -44,7 +48,7 @@ public struct LoopQuantity: Hashable, Equatable, Comparable, Sendable {
                     less than a given quantity.
      @discussion    Throws an exception if the unit of the given quantity is not compatible with the receiver's unit.
      */
-    public func compare(_ quantity: LoopQuantity) -> ComparisonResult {
+    func compare(_ quantity: LoopQuantity) -> ComparisonResult {
         if value == quantity.doubleValue(for: unit) {
             return .orderedSame
         } else if value > quantity.doubleValue(for: unit) {
@@ -54,11 +58,11 @@ public struct LoopQuantity: Hashable, Equatable, Comparable, Sendable {
         }
     }
     
-    public static func <(lhs: LoopQuantity, rhs: LoopQuantity) -> Bool {
+    static func <(lhs: LoopQuantity, rhs: LoopQuantity) -> Bool {
         return lhs.compare(rhs) == .orderedAscending
     }
     
-    public static func == (lhs: LoopQuantity, rhs: LoopQuantity) -> Bool {
+    static func == (lhs: LoopQuantity, rhs: LoopQuantity) -> Bool {
         guard lhs.unit != rhs.unit else {
             return lhs.value == rhs.value
         }

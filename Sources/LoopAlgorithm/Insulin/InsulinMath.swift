@@ -224,7 +224,7 @@ extension Collection where Element: InsulinDose {
     ///
     /// Doses which cross time boundaries in the basal rate schedule are split into multiple entries.
     ///
-    /// - Parameter basalSchedule: A history of basal rates covering the timespan of these doses.
+    /// - Parameter basalHistory: A history of basal rates covering the timespan of these doses.
     /// - Parameter fillBasalGaps: If true, the returned array will interpolate doses from basal schedule for those parts of the 
     ///                             timeline that this array does not cover.
     /// - Returns: An array of annotated dose entries
@@ -286,7 +286,7 @@ extension Collection where Element: InsulinDose {
     ///
     /// Doses which cross time boundaries in the basal rate schedule are split into multiple entries.
     ///
-    /// - Parameter basalSchedule: A history of basal rates covering the timespan of these doses.
+    /// - Parameter basalHistory: A history of basal rates covering the timespan of these doses.
     /// - Returns: An array of annotated dose entries
     public func annotated(with basalHistory: [AbsoluteScheduleValue<Double>]) -> [BasalRelativeDose] {
         var annotatedDoses: [BasalRelativeDose] = []
@@ -314,6 +314,8 @@ extension Collection where Element == BasalRelativeDose {
      - parameter start:                 The date to start the timeline
      - parameter end:                   The date to end the timeline
      - parameter delta:                 The differential between timeline entries, Defaults to 5 minutes.
+     - parameter useLegacyIntegration:  If true, integrate basal doses on the delta grid as deployed Loop did before
+                                        the continuous integration, which ripples by up to one delta.
 
      - returns: A sequence of insulin amount remaining
      */
@@ -347,6 +349,8 @@ extension Collection where Element == BasalRelativeDose {
      Calculates insulin remaining at a given point in time for a collection of doses
 
      - parameter date:                  The date at which to calculate remaining insulin.  If nil, current date is used.
+     - parameter useLegacyIntegration:  If true, integrate basal doses on the delta grid as deployed Loop did before
+                                        the continuous integration, which ripples by up to one delta.
 
      - returns: Insulin amount remaining at specified time
      */
@@ -368,7 +372,7 @@ extension Collection where Element == BasalRelativeDose {
     ///   - end: The latest date of effects to return. If nil is passed, it will be calculated from the last sample end date plus the longestEffectDuration.
     ///   - delta: The interval between returned effects
     /// - Returns: An array of glucose effects for the duration of the doses
-    public func glucoseEffects(
+    func glucoseEffects(
         insulinSensitivityHistory: [AbsoluteScheduleValue<LoopQuantity>],
         from start: Date? = nil,
         to end: Date? = nil,
@@ -416,7 +420,7 @@ extension Collection where Element == BasalRelativeDose {
     ///   - end: The latest date of effects to return
     ///   - delta: The interval between returned effects
     /// - Returns: An array of glucose effects for the duration of the doses
-    public func glucoseEffectsMidAbsorptionISF(
+    func glucoseEffectsMidAbsorptionISF(
         longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
         insulinSensitivityHistory: [AbsoluteScheduleValue<LoopQuantity>],
         from start: Date? = nil,
@@ -508,7 +512,7 @@ extension Collection where Element == BasalRelativeDose {
     ///   - effectDates: The dates at which to calculate glucose effects
     ///   - delta: The interval below which to consider doses as momentary
     /// - Returns: An array of glucose effects for the duration of the doses
-    public func glucoseEffects(
+    func glucoseEffects(
         longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
         insulinSensitivityTimeline: [AbsoluteScheduleValue<LoopQuantity>],
         effectDates: [Date],
@@ -541,5 +545,40 @@ extension Collection where Element == BasalRelativeDose {
         }
 
         return values
+    }
+}
+
+public extension Collection where Element == BasalRelativeDose {
+    /// Glucose effects of the doses. Sensitivity is in mg/dL per unit.
+    func glucoseEffects(
+        insulinSensitivityHistoryMgdlPerUnit: [AbsoluteScheduleValue<Double>],
+        from start: Date? = nil,
+        to end: Date? = nil,
+        delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
+    ) -> [GlucoseEffect] {
+        glucoseEffects(insulinSensitivityHistory: insulinSensitivityHistoryMgdlPerUnit.mgdlQuantities, from: start, to: end, delta: delta)
+    }
+
+    /// Glucose effects of the doses using mid-absorption ISF. Sensitivity is in mg/dL per unit.
+    func glucoseEffectsMidAbsorptionISF(
+        longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
+        insulinSensitivityHistoryMgdlPerUnit: [AbsoluteScheduleValue<Double>],
+        from start: Date? = nil,
+        to end: Date? = nil,
+        delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
+    ) -> [GlucoseEffect] {
+        glucoseEffectsMidAbsorptionISF(longestEffectDuration: longestEffectDuration, insulinSensitivityHistory: insulinSensitivityHistoryMgdlPerUnit.mgdlQuantities,
+                                       from: start, to: end, delta: delta)
+    }
+
+    /// Glucose effects of the doses at the given dates. Sensitivity is in mg/dL per unit.
+    func glucoseEffects(
+        longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
+        insulinSensitivityTimelineMgdlPerUnit: [AbsoluteScheduleValue<Double>],
+        effectDates: [Date],
+        delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
+    ) -> [GlucoseEffect] {
+        glucoseEffects(longestEffectDuration: longestEffectDuration, insulinSensitivityTimeline: insulinSensitivityTimelineMgdlPerUnit.mgdlQuantities,
+                       effectDates: effectDates, delta: delta)
     }
 }
