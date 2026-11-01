@@ -224,7 +224,7 @@ extension Collection where Element: InsulinDose {
     ///
     /// Doses which cross time boundaries in the basal rate schedule are split into multiple entries.
     ///
-    /// - Parameter basalSchedule: A history of basal rates covering the timespan of these doses.
+    /// - Parameter basalHistory: A history of basal rates covering the timespan of these doses.
     /// - Parameter fillBasalGaps: If true, the returned array will interpolate doses from basal schedule for those parts of the 
     ///                             timeline that this array does not cover.
     /// - Returns: An array of annotated dose entries
@@ -286,7 +286,7 @@ extension Collection where Element: InsulinDose {
     ///
     /// Doses which cross time boundaries in the basal rate schedule are split into multiple entries.
     ///
-    /// - Parameter basalSchedule: A history of basal rates covering the timespan of these doses.
+    /// - Parameter basalHistory: A history of basal rates covering the timespan of these doses.
     /// - Returns: An array of annotated dose entries
     public func annotated(with basalHistory: [AbsoluteScheduleValue<Double>]) -> [BasalRelativeDose] {
         var annotatedDoses: [BasalRelativeDose] = []
@@ -314,6 +314,8 @@ extension Collection where Element == BasalRelativeDose {
      - parameter start:                 The date to start the timeline
      - parameter end:                   The date to end the timeline
      - parameter delta:                 The differential between timeline entries, Defaults to 5 minutes.
+     - parameter useLegacyIntegration:  If true, integrate basal doses on the delta grid as deployed Loop did before
+                                        the continuous integration, which ripples by up to one delta.
 
      - returns: A sequence of insulin amount remaining
      */
@@ -347,6 +349,8 @@ extension Collection where Element == BasalRelativeDose {
      Calculates insulin remaining at a given point in time for a collection of doses
 
      - parameter date:                  The date at which to calculate remaining insulin.  If nil, current date is used.
+     - parameter useLegacyIntegration:  If true, integrate basal doses on the delta grid as deployed Loop did before
+                                        the continuous integration, which ripples by up to one delta.
 
      - returns: Insulin amount remaining at specified time
      */

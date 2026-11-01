@@ -142,24 +142,24 @@ public struct Algorithm {
     /// Generates a forecast predicting glucose.
     /// Outputs may be incomplete, if there are issues with the provided data, but as many intermediate derived fields as can be computed, will be computed.
     ///
-    /// Returns nil if the normal scheduled basal, or active temporary basal, is sufficient.
-    /// 
-    ///
     /// - Parameters:
     ///   - start: The starting time of the glucose prediction.
     ///   - glucoseHistory: History of glucose values: t-10h to t. Must include at least one value.
     ///   - doses: History of insulin doses: t-16h to t
     ///   - carbEntries: History of carb entries: t-10h to t
     ///   - basal: Scheduled basal rate timeline: t-16h to t
-    ///   - sensitivityMgdlPerUnit: Insulin sensitivity timeline in mg/dL per unit: t-16h to t (eventually with mid-absorption isf changes, it will be t-10h to t)
-    ///   - carbRatio: Carb ratio timeline: t-10h to t+6h
+    ///   - sensitivityMgdlPerUnit: Insulin sensitivity timeline in mg/dL per unit: t-16h to t
+    ///   - carbRatio: Carb ratio timeline in grams per unit: t-10h to t+6h
     ///   - targetMgdl: Correction range timeline in mg/dL. Used only for the integral-correction clamp when `emulation.integralRCClamp` is enabled; may be empty otherwise.
     ///   - algorithmEffectsOptions: Which effects to include when combining effects to generate glucose prediction
     ///   - useIntegralRetrospectiveCorrection: If true, the prediction will use Integral Retrospection. If false, will use traditional Retrospective Correction
     ///   - includingPositiveVelocityAndRC: If false, only net negative momentum and RC effects will used.
+    ///   - useMidAbsorptionISF: If true, each dose's effect follows the sensitivity timeline over its absorption instead of using the sensitivity at delivery.
     ///   - carbAbsorptionModel: A model conforming to CarbAbsorptionComputable that is used for computing carb absorption over time.
-    ///   - emulation: Options for reproducing earlier deployed algorithm behavior; the default emulates nothing.
+    ///   - gradualTransitionsThreshold: Largest jump in mg/dL between consecutive glucose readings for retrospective correction to apply.
     ///   - momentumVelocityMaximumMgdlPerMinute: Limit on the momentum effect, in mg/dL per minute
+    ///   - emulation: Options for reproducing earlier deployed algorithm behavior; the default emulates nothing.
+    ///   - experiments: Algorithm experiments to apply; the empty set is standard LoopAlgorithm.
     /// - Returns: A LoopPrediction struct containing the predicted glucose and the computed intermediate effects used to make the prediction
     ///
     public static func generatePrediction<CarbType, GlucoseType, InsulinDoseType>(
@@ -446,7 +446,9 @@ public struct Algorithm {
     ///     `[t - lookback, t + 6h]` for future-insulin mode).
     ///   - carbEntries: History of carb entries.
     ///   - sensitivityMgdlPerUnit: ISF timeline in mg/dL per unit — still required for carb + RC effects.
-    ///   - carbRatio: Carb ratio timeline.
+    ///   - carbRatio: Carb ratio timeline in grams per unit.
+    ///   - targetMgdl: Correction range timeline in mg/dL. Used only for the integral-correction clamp when `emulation.integralRCClamp` is enabled; may be empty otherwise.
+    ///   - scheduledBasalRate: Scheduled basal rate in U/h at `start`, for the integral-correction clamp.
     ///   - algorithmEffectsOptions: Which effects to include.
     ///   - useIntegralRetrospectiveCorrection: Use integral RC.
     ///   - includingPositiveVelocityAndRC: Include positive velocity/RC.
@@ -454,6 +456,8 @@ public struct Algorithm {
     ///     `precomputedInsulin.insulinEffects` is non-nil).
     ///   - carbAbsorptionModel: Carb absorption model.
     ///   - gradualTransitionsThreshold: RC smoothness gate (default 40 mg/dL).
+    ///   - momentumVelocityMaximumMgdlPerMinute: Limit on the momentum effect, in mg/dL per minute.
+    ///   - emulation: Options for reproducing earlier deployed algorithm behavior; the default emulates nothing.
     /// - Returns: A `LoopPrediction` struct.  `dosesRelativeToBasal` is
     ///   populated from `precomputedInsulin.annotatedDoses`.
     public static func generatePrediction<CarbType, GlucoseType>(
@@ -806,6 +810,13 @@ public struct Algorithm {
         return bolus
     }
 
+    /// Runs the algorithm: forecasts glucose and recommends a dose.
+    ///
+    /// Inputs are plain numbers in fixed units: glucose and targets in mg/dL, sensitivity in mg/dL per unit,
+    /// carbs in grams, carb ratio in grams per unit, insulin in units and rates in U/h. See `AlgorithmInput`.
+    ///
+    /// - Parameter input: The glucose, dose and carb history, therapy settings and options.
+    /// - Returns: The forecast, the effects behind it, and the recommendation or the error that prevented one.
     public static func run<LoopAlgorithmInputType: AlgorithmInput>(input: LoopAlgorithmInputType) -> AlgorithmOutput<LoopAlgorithmInputType.CarbType> {
 
         let scheduledSensitivity = input.sensitivityQuantities
