@@ -22,8 +22,8 @@ public struct CarbStatus<T: CarbEntry> {
 
 // Masquerade as a carb entry, substituting AbsorbedCarbValue's interpretation of absorption time
 extension CarbStatus: SampleValue {
-    public var quantity: LoopQuantity {
-        return entry.quantity
+    public var grams: Double {
+        return entry.grams
     }
 
     public var startDate: Date {

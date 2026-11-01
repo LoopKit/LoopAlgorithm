@@ -29,7 +29,7 @@ public struct GuardAndRunwayOutput: Equatable {
     /// `glucose` lowered by the band as the low guard saw it this run; unchanged when the band was off.
     /// `AlgorithmOutput.predictedGlucose` is the forecast without the band.
     public func guarded(_ glucose: [PredictedGlucoseValue]) -> [PredictedGlucoseValue] {
-        bandApplied ? LoopAlgorithm.volatilityBanded(glucose, band: band, volatility: volatility) : glucose
+        bandApplied ? Algorithm.volatilityBanded(glucose, band: band, volatility: volatility) : glucose
     }
 }
 

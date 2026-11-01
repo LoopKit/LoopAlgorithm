@@ -6,7 +6,7 @@
 //  Copyright © 2021 LoopKit Authors. All rights reserved.
 //
 
-public enum GlucoseCondition: String, Codable {
+enum GlucoseCondition: String, Codable {
     case belowRange
     case aboveRange
 }

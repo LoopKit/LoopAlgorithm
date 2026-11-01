@@ -11,31 +11,31 @@ import Foundation
 public struct GlucoseEffectVelocity: SampleValue {
     public let startDate: Date
     public let endDate: Date
-    public let quantity: LoopQuantity
+    public let mgdlPerSecond: Double
 
-    public init(startDate: Date, endDate: Date, quantity: LoopQuantity) {
+    public init(startDate: Date, endDate: Date, mgdlPerSecond: Double) {
         self.startDate = startDate
         self.endDate = endDate
-        self.quantity = quantity
+        self.mgdlPerSecond = mgdlPerSecond
+    }
+
+    init(startDate: Date, endDate: Date, quantity: LoopQuantity) {
+        self.init(startDate: startDate, endDate: endDate, mgdlPerSecond: quantity.doubleValue(for: GlucoseEffectVelocity.perSecondUnit))
+    }
+
+    var quantity: LoopQuantity {
+        LoopQuantity(unit: GlucoseEffectVelocity.perSecondUnit, doubleValue: mgdlPerSecond)
     }
 }
 
 
 extension GlucoseEffectVelocity {
-    public static let perSecondUnit = LoopUnit.milligramsPerDeciliterPerSecond
+    static let perSecondUnit = LoopUnit.milligramsPerDeciliterPerSecond
 
     /// The integration of the velocity span
     public var effect: GlucoseEffect {
         let duration = endDate.timeIntervalSince(startDate)
-        let velocityPerSecond = quantity.doubleValue(for: GlucoseEffectVelocity.perSecondUnit)
-
-        return GlucoseEffect(
-            startDate: endDate,
-            quantity: LoopQuantity(
-                unit: .milligramsPerDeciliter,
-                doubleValue: velocityPerSecond * duration
-            )
-        )
+        return GlucoseEffect(startDate: endDate, mgdl: mgdlPerSecond * duration)
     }
 }
 
@@ -44,17 +44,14 @@ extension GlucoseEffectVelocity: Codable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.startDate = try container.decode(Date.self, forKey: .startDate)
         self.endDate = try container.decode(Date.self, forKey: .endDate)
-        self.quantity = LoopQuantity(
-            unit: GlucoseEffectVelocity.perSecondUnit,
-            doubleValue: try container.decode(Double.self, forKey: .mgdlPerSecond)
-        )
+        self.mgdlPerSecond = try container.decode(Double.self, forKey: .mgdlPerSecond)
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(startDate, forKey: .startDate)
         try container.encode(endDate, forKey: .endDate)
-        try container.encode(quantity.doubleValue(for: GlucoseEffectVelocity.perSecondUnit), forKey: .mgdlPerSecond)
+        try container.encode(mgdlPerSecond, forKey: .mgdlPerSecond)
     }
 
     private enum CodingKeys: String, CodingKey {

@@ -22,7 +22,7 @@
 // │     let scaled = scaledSensitivity(sensitivity, by: multiplier)          │
 // │     let input  = base.withEffects(sensitivity: scaled)  // O(D×T) once  │
 // │     for t in sweepSteps {                                                │
-// │       let result = LoopAlgorithm.generatePrediction(                    │
+// │       let result = Algorithm.generatePrediction(                        │
 // │         start: t, ..., precomputedInsulin: input, ...)  // no annotation │
 // │     }                                                                    │
 // │   }                                                                      │
@@ -61,7 +61,7 @@ private extension Array {
 ///     let input = base.withEffects(sensitivity: scale(sensitivity, by: multiplier),
 ///                                  from: sweepStart, to: sweepEnd + activityDuration)
 ///     for t in sweepSteps {
-///         let prediction = LoopAlgorithm.generatePrediction(
+///         let prediction = Algorithm.generatePrediction(
 ///             start: t, glucoseHistory: cgm[t], precomputedInsulin: input, ...)
 ///     }
 /// }
@@ -142,11 +142,12 @@ extension PrecomputedInsulinInput {
     ///   - useMidAbsorptionISF: Use mid-absorption ISF computation.
     /// - Returns: A new `PrecomputedInsulinInput` with `insulinEffects` populated.
     public func withEffects(
-        sensitivity: [AbsoluteScheduleValue<LoopQuantity>],
+        sensitivity: [AbsoluteScheduleValue<Double>],
         from: Date? = nil,
         to: Date? = nil,
         useMidAbsorptionISF: Bool = false
     ) -> PrecomputedInsulinInput {
+        let sensitivity = sensitivity.mgdlQuantities
         let effects: [GlucoseEffect]
         if useMidAbsorptionISF {
             effects = annotatedDoses.glucoseEffectsMidAbsorptionISF(
@@ -198,7 +199,7 @@ extension PrecomputedInsulinInput {
     public static func build<DoseType: InsulinDose>(
         doses: [DoseType],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<LoopQuantity>]? = nil,
+        sensitivity: [AbsoluteScheduleValue<Double>]? = nil,
         effectsFrom: Date? = nil,
         effectsTo: Date? = nil,
         useMidAbsorptionISF: Bool = false

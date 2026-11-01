@@ -184,7 +184,7 @@ extension GlucoseValue {
 
      - returns: An array of glucose effects
      */
-    public func decayEffect(atRate rate: LoopQuantity, for duration: TimeInterval, withDelta delta: TimeInterval = 5 * 60, useLegacyDecay: Bool = false) -> [GlucoseEffect] {
+    func decayEffect(atRate rate: LoopQuantity, for duration: TimeInterval, withDelta delta: TimeInterval = 5 * 60, useLegacyDecay: Bool = false) -> [GlucoseEffect] {
         guard let (startDate, endDate) = LoopMath.simulationDateRangeForSamples([self], duration: duration, delta: delta) else {
             return []
         }

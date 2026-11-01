@@ -10,11 +10,15 @@ import Foundation
 
 public struct GlucoseEffect: GlucoseValue, Equatable, Sendable {
     public let startDate: Date
-    public let quantity: LoopQuantity
+    public let mgdl: Double
 
-    public init(startDate: Date, quantity: LoopQuantity) {
+    public init(startDate: Date, mgdl: Double) {
         self.startDate = startDate
-        self.quantity = quantity
+        self.mgdl = mgdl
+    }
+
+    init(startDate: Date, quantity: LoopQuantity) {
+        self.init(startDate: startDate, mgdl: quantity.doubleValue(for: .milligramsPerDeciliter))
     }
 }
 
@@ -22,13 +26,13 @@ extension GlucoseEffect: Codable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.init(startDate: try container.decode(Date.self, forKey: .startDate),
-                  quantity: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: try container.decode(Double.self, forKey: .quantity)))
+                  mgdl: try container.decode(Double.self, forKey: .quantity))
     }
 
     public func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(startDate, forKey: .startDate)
-        try container.encode(quantity.doubleValue(for: .milligramsPerDeciliter), forKey: .quantity)
+        try container.encode(mgdl, forKey: .quantity)
     }
 
     private enum CodingKeys: String, CodingKey {

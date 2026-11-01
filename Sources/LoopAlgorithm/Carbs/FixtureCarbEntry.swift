@@ -10,19 +10,28 @@ import Foundation
 public struct FixtureCarbEntry: CarbEntry {
     public var absorptionTime: TimeInterval?
     public var startDate: Date
-    public var quantity: LoopQuantity
+    public var grams: Double
     public var foodType: String?
 
     public init(
         absorptionTime: TimeInterval? = nil,
         startDate: Date,
-        quantity: LoopQuantity,
+        grams: Double,
         foodType: String? = nil
     ) {
         self.absorptionTime = absorptionTime
         self.startDate = startDate
-        self.quantity = quantity
+        self.grams = grams
         self.foodType = foodType
+    }
+
+    init(
+        absorptionTime: TimeInterval? = nil,
+        startDate: Date,
+        quantity: LoopQuantity,
+        foodType: String? = nil
+    ) {
+        self.init(absorptionTime: absorptionTime, startDate: startDate, grams: quantity.doubleValue(for: .gram), foodType: foodType)
     }
 }
 
@@ -32,7 +41,7 @@ extension FixtureCarbEntry: Codable {
         self.init(
             absorptionTime: try container.decodeIfPresent(TimeInterval.self, forKey: .absorptionTime),
             startDate: try container.decode(Date.self, forKey: .date),
-            quantity: LoopQuantity(unit: .gram, doubleValue: try container.decode(Double.self, forKey: .grams))
+            grams: try container.decode(Double.self, forKey: .grams)
         )
     }
 
@@ -40,7 +49,7 @@ extension FixtureCarbEntry: Codable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encodeIfPresent(absorptionTime, forKey: .absorptionTime)
         try container.encode(startDate, forKey: .date)
-        try container.encode(quantity.doubleValue(for: .gram), forKey: .grams)
+        try container.encode(grams, forKey: .grams)
     }
 
     private enum CodingKeys: String, CodingKey {

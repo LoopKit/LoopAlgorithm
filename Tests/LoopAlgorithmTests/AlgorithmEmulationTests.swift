@@ -187,8 +187,8 @@ final class AlgorithmEmulationTests: XCTestCase {
         // a recommendation, and their forecasts should differ.
         var plain = fixture
         plain.emulation = nil
-        let emulated = LoopAlgorithm.run(input: fixture)
-        let current = LoopAlgorithm.run(input: plain)
+        let emulated = Algorithm.run(input: fixture)
+        let current = Algorithm.run(input: plain)
         XCTAssertNotNil(try? emulated.recommendationResult.get())
         XCTAssertNotNil(try? current.recommendationResult.get())
     }

@@ -22,7 +22,7 @@ extension ExperimentParameters.PostLowRiseCut {
     }
 }
 
-extension LoopAlgorithm {
+extension Algorithm {
 
     /// The volatility band: each predicted point τ minutes ahead is lowered by
     /// `gain × σ5 × (τ/5)^exponent` up to `horizon`, tapering to zero by `taperEnd`.
@@ -164,7 +164,7 @@ extension LoopAlgorithm {
     }
 
     /// The target range lowered by `shift` mg/dL, floored at 70–80.
-    static func targetLowered(_ target: GlucoseRangeTimeline, by shift: Double) -> GlucoseRangeTimeline {
+    static func targetLowered(_ target: QuantityRangeTimeline, by shift: Double) -> QuantityRangeTimeline {
         let unit = LoopUnit.milligramsPerDeciliter
         return target.map {
             AbsoluteScheduleValue(

@@ -17,10 +17,4 @@ public protocol GlucoseSampleValue: GlucoseValue {
 
     /// Whether the glucose value is user entered, as opposed to a CGM value.
     var wasUserEntered: Bool { get }
-
-    /// Any condition applied to the sample.
-    var condition: GlucoseCondition? { get }
-
-    /// The trend rate of the sample.
-    var trendRate: LoopQuantity? { get }
 }

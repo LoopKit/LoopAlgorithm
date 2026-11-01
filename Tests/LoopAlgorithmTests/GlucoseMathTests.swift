@@ -17,15 +17,16 @@ extension XCTestCase {
 
 public struct GlucoseFixtureValue: GlucoseSampleValue {
     public let startDate: Date
-    public let quantity: LoopQuantity
+    let quantity: LoopQuantity
+    public var mgdl: Double { quantity.doubleValue(for: .milligramsPerDeciliter) }
     public let isDisplayOnly: Bool
     public let wasUserEntered: Bool
     public let provenanceIdentifier: String
     public let condition: GlucoseCondition?
-    public let trendRate: LoopQuantity?
+    let trendRate: LoopQuantity?
     public var syncIdentifier: String?
 
-    public init(startDate: Date, quantity: LoopQuantity, isDisplayOnly: Bool, wasUserEntered: Bool, provenanceIdentifier: String?, condition: GlucoseCondition?, trendRate: LoopQuantity?) {
+    init(startDate: Date, quantity: LoopQuantity, isDisplayOnly: Bool, wasUserEntered: Bool, provenanceIdentifier: String?, condition: GlucoseCondition?, trendRate: LoopQuantity?) {
         self.startDate = startDate
         self.quantity = quantity
         self.isDisplayOnly = isDisplayOnly
@@ -49,6 +50,7 @@ final class GlucoseMathTests: XCTestCase {
     private struct MockGlucoseSample: GlucoseSampleValue {
         var startDate: Date
         var quantity: LoopQuantity
+        var mgdl: Double { quantity.doubleValue(for: .milligramsPerDeciliter) }
         var provenanceIdentifier: String
         var isDisplayOnly: Bool
         var wasUserEntered: Bool

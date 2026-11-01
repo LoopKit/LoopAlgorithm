@@ -20,10 +20,10 @@ public struct AlgorithmInputFixture: AlgorithmInput {
     public var doses: [FixtureInsulinDose]
     public var carbEntries: [FixtureCarbEntry]
     public var basal: [AbsoluteScheduleValue<Double>]
-    public var sensitivity: [AbsoluteScheduleValue<LoopQuantity>]
+    public var sensitivity: [AbsoluteScheduleValue<Double>]
     public var carbRatio: [AbsoluteScheduleValue<Double>]
     public var target: GlucoseRangeTimeline
-    public var suspendThreshold: LoopQuantity?
+    public var suspendThreshold: Double?
     public var maxBolus: Double
     public var maxActiveInsulinMultiplier: Double?
     public var maxBasalRate: Double
@@ -63,10 +63,10 @@ public struct AlgorithmInputFixture: AlgorithmInput {
         doses: [FixtureInsulinDose],
         carbEntries: [FixtureCarbEntry],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<LoopQuantity>],
+        sensitivity: [AbsoluteScheduleValue<Double>],
         carbRatio: [AbsoluteScheduleValue<Double>],
         target: GlucoseRangeTimeline,
-        suspendThreshold: LoopQuantity?,
+        suspendThreshold: Double?,
         maxBolus: Double,
         maxActiveInsulinMultiplier: Double? = nil,
         maxBasalRate: Double,
@@ -114,19 +114,14 @@ extension AlgorithmInputFixture: Codable {
         self.doses = try container.decode([FixtureInsulinDose].self, forKey: .doses)
         self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
-        let sensitivityMgdl = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
-        self.sensitivity = sensitivityMgdl.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.value))}
+        self.sensitivity = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
         self.carbRatio = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .carbRatio)
         let targetMgdl = try container.decode([TargetEntry].self, forKey: .target)
         self.target = targetMgdl.map {
-            let lower = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.lowerBound)
-            let upper = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.upperBound)
-            let range = ClosedRange(uncheckedBounds: (lower: lower, upper: upper))
+            let range = ClosedRange(uncheckedBounds: (lower: $0.lowerBound, upper: $0.upperBound))
             return AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: range)
         }
-        if let suspendThresholdMgdl = try container.decodeIfPresent(Double.self, forKey: .suspendThreshold) {
-            self.suspendThreshold = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: suspendThresholdMgdl)
-        }
+        self.suspendThreshold = try container.decodeIfPresent(Double.self, forKey: .suspendThreshold)
         self.maxBolus = try container.decode(Double.self, forKey: .maxBolus)
         self.maxActiveInsulinMultiplier = try container.decodeIfPresent(Double.self, forKey: .maxActiveInsulinMultiplier)
         self.maxBasalRate = try container.decode(Double.self, forKey: .maxBasalRate)
@@ -168,16 +163,13 @@ extension AlgorithmInputFixture: Codable {
         try container.encode(doses, forKey: .doses)
         try container.encode(carbEntries, forKey: .carbEntries)
         try container.encode(basal, forKey: .basal)
-        let sensitivityMgdl = sensitivity.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: $0.value.doubleValue(for: .milligramsPerDeciliter)) }
-        try container.encode(sensitivityMgdl, forKey: .sensitivity)
+        try container.encode(sensitivity, forKey: .sensitivity)
         try container.encode(carbRatio, forKey: .carbRatio)
         let targetMgdl = target.map {
-            let lower = $0.value.lowerBound.doubleValue(for: .milligramsPerDeciliter)
-            let upper = $0.value.upperBound.doubleValue(for: .milligramsPerDeciliter)
-            return TargetEntry(startDate: $0.startDate, endDate: $0.endDate, lowerBound: lower, upperBound: upper)
+            TargetEntry(startDate: $0.startDate, endDate: $0.endDate, lowerBound: $0.value.lowerBound, upperBound: $0.value.upperBound)
         }
         try container.encode(targetMgdl, forKey: .target)
-        try container.encode(suspendThreshold?.doubleValue(for: .milligramsPerDeciliter), forKey: .suspendThreshold)
+        try container.encode(suspendThreshold, forKey: .suspendThreshold)
         try container.encode(maxBolus, forKey: .maxBolus)
         try container.encode(maxActiveInsulinMultiplier, forKey: .maxActiveInsulinMultiplier)
         try container.encode(maxBasalRate, forKey: .maxBasalRate)

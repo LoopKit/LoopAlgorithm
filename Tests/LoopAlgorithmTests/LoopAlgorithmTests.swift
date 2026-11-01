@@ -49,7 +49,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         let (input, recommendation) = loadScenario("suspend")
 
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
 
         XCTAssertEqual(output.recommendation, recommendation)
     }
@@ -62,7 +62,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         let (input, recommendation) = loadScenario("carbs_with_isf_change")
 
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
 
         XCTAssertEqual(output.recommendation, recommendation)
     }
@@ -73,7 +73,7 @@ final class LoopAlgorithmTests: XCTestCase {
         input.recommendationType = .manualBolus
         input.carbEntries.append(FixtureCarbEntry(absorptionTime: .hours(6), startDate: now, quantity: .carbs(50)))
 
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
 
         XCTAssertEqual(output.activeCarbs, 50)
         XCTAssertEqual(output.recommendation!.manual!.amount, 5.86, accuracy: 0.01)
@@ -100,8 +100,8 @@ final class LoopAlgorithmTests: XCTestCase {
         )
 
 
-        let outputA = LoopAlgorithm.run(input: a)
-        let outputB = LoopAlgorithm.run(input: b)
+        let outputA = Algorithm.run(input: a)
+        let outputB = Algorithm.run(input: b)
 
         XCTAssertEqual(outputA.activeCarbs, outputB.activeCarbs)
         XCTAssertEqual(outputA.activeInsulin, outputB.activeInsulin)
@@ -148,7 +148,7 @@ final class LoopAlgorithmTests: XCTestCase {
             FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-3)), quantity: .glucose(145)),
         ]
 
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
 
         let carbStatus = output.effects.carbStatus.first!
         XCTAssertEqual(carbStatus.absorption!.observedProgress.doubleValue(for: .percent), 0.36, accuracy: 0.01)
@@ -167,7 +167,7 @@ final class LoopAlgorithmTests: XCTestCase {
         let url = Bundle.module.url(forResource: "live_capture_input", withExtension: "json", subdirectory: "Fixtures")!
         let input = try! decoder.decode(LoopPredictionInput.self, from: try! Data(contentsOf: url))
 
-        let prediction = LoopAlgorithm.generatePrediction(
+        let prediction = Algorithm.generatePrediction(
             start: input.glucoseHistory.last?.startDate ?? Date(),
             glucoseHistory: input.glucoseHistory,
             doses: input.doses,
@@ -207,12 +207,12 @@ final class LoopAlgorithmTests: XCTestCase {
         ]
 
         // With a spurious reading over the gradualTransitionsThreshold of 40 mg/dL, momentum and rc are turned off, and the forecast is lower.
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
         XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 164.5, accuracy: 0.1)
 
         // With the threshold set high, our spurious reading is still considered gradual, and RC and momentum will be used, resulting in a higher forecast.
         input.gradualTransitionsThreshold = 60
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 216, accuracy: 0.1)
 
     }
@@ -225,7 +225,7 @@ final class LoopAlgorithmTests: XCTestCase {
         let url = Bundle.module.url(forResource: "meal-bolus-isf", withExtension: "json", subdirectory: "Fixtures")!
         var input = try! decoder.decode(AlgorithmInputFixture.self, from: try! Data(contentsOf: url))
 
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
 
         // Should recommend bolus to cover meal
         XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 274.14, accuracy: 0.1)
@@ -241,7 +241,7 @@ final class LoopAlgorithmTests: XCTestCase {
             )
         )
 
-        let output2 = LoopAlgorithm.run(input: input)
+        let output2 = Algorithm.run(input: input)
 
         // 150 mg/dL is the middle of the target range
         XCTAssertEqual(output2.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 150, accuracy: 0.1)
@@ -256,7 +256,7 @@ final class LoopAlgorithmTests: XCTestCase {
         var input = try! decoder.decode(
             AlgorithmInputFixture.self, from: try! Data(contentsOf: url))
 
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
 
         // Should recommend bolus to cover meal
         XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 269.15, accuracy: 0.1)
@@ -272,7 +272,7 @@ final class LoopAlgorithmTests: XCTestCase {
             )
         )
 
-        let output2 = LoopAlgorithm.run(input: input)
+        let output2 = Algorithm.run(input: input)
 
         // 150 mg/dL is the middle of the target range
         XCTAssertEqual(output2.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 150, accuracy: 0.1)
@@ -292,17 +292,17 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // ISF Changing mid-aborption
         input.sensitivity = [
-            AbsoluteScheduleValue(startDate: isfStart, endDate: isfMid, value: .glucose(50)),
-            AbsoluteScheduleValue(startDate: isfMid, endDate: isfEnd, value: .glucose(100))
+            AbsoluteScheduleValue(startDate: isfStart, endDate: isfMid, value: 50),
+            AbsoluteScheduleValue(startDate: isfMid, endDate: isfEnd, value: 100)
         ]
 
         // With Mid-absorption ISF flag = false
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
         XCTAssertEqual(output.effects.insulin.last!.quantity.doubleValue(for: .milligramsPerDeciliter), -50, accuracy: 0.5)
 
         // With Mid-absorption ISF flag = true
         input.useMidAbsorptionISF = true
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         XCTAssertEqual(output.effects.insulin.last!.quantity.doubleValue(for: .milligramsPerDeciliter), -83, accuracy: 0.5)
     }
 
@@ -325,7 +325,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // Max activeInsulin = 2 x maxBolus = 16U
         input.maxBolus = 8
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
         var recommendedBolus = output.recommendation!.automatic?.bolusUnits
         var activeInsulin = output.activeInsulin!
         XCTAssertEqual(activeInsulin, 8.0)
@@ -333,7 +333,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // Now try with maxBolus of 4; should not recommend any more insulin, as we're at our max iob
         input.maxBolus = 4
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         recommendedBolus = output.recommendation!.automatic?.bolusUnits
         activeInsulin = output.activeInsulin!
         XCTAssertEqual(activeInsulin, 8.0)
@@ -360,7 +360,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // Max activeInsulin = 2 x maxBolus = 16U
         input.maxBolus = 8
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
         var recommendedRate = output.recommendation!.automatic!.basalAdjustment.unitsPerHour
         var activeInsulin = output.activeInsulin!
         XCTAssertEqual(activeInsulin, 8.0)
@@ -368,7 +368,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // Now try with maxBolus of 4; should only recommend scheduled basal (1U/hr), as we're at our max iob
         input.maxBolus = 4
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         recommendedRate = output.recommendation!.automatic!.basalAdjustment.unitsPerHour
         activeInsulin = output.activeInsulin!
         XCTAssertEqual(activeInsulin, 8.0)
@@ -384,8 +384,8 @@ final class LoopAlgorithmTests: XCTestCase {
         // Sensitivity doubles in one hour
         let isfChangeTime = now.addingTimeInterval(.hours(1))
         input.sensitivity = [
-            AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-48)), endDate: isfChangeTime, value: .glucose(50)),
-            AbsoluteScheduleValue(startDate: isfChangeTime, endDate: now.addingTimeInterval(.hours(48)), value: .glucose(100))
+            AbsoluteScheduleValue(startDate: now.addingTimeInterval(.hours(-48)), endDate: isfChangeTime, value: 50),
+            AbsoluteScheduleValue(startDate: isfChangeTime, endDate: now.addingTimeInterval(.hours(48)), value: 100)
         ]
 
         // No insulin or carbs
@@ -396,12 +396,12 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // Without mid-absorption ISF
         input.useMidAbsorptionISF = false
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
         XCTAssertEqual(2.73, output.recommendation!.manual!.amount, accuracy: 0.01)
 
         // With mid-absorption ISF
         input.useMidAbsorptionISF = true
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         XCTAssertEqual(1.49, output.recommendation!.manual!.amount, accuracy: 0.01)
     }
 
@@ -425,10 +425,10 @@ final class LoopAlgorithmTests: XCTestCase {
 
         // Sensitivity doesn't cover start of basal dose
         input.sensitivity = [
-            AbsoluteScheduleValue(startDate: now, endDate: now.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration).dateCeiledToTimeInterval(GlucoseMath.defaultDelta), value: .glucose(50)),
+            AbsoluteScheduleValue(startDate: now, endDate: now.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration).dateCeiledToTimeInterval(GlucoseMath.defaultDelta), value: 50),
         ]
 
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
         guard case .failure(AlgorithmError.sensitivityTimelineStartsTooLate) = output.recommendationResult else {
             XCTFail("Expected sensitivityTimelineStartsTooLate failure")
             return
@@ -439,10 +439,10 @@ final class LoopAlgorithmTests: XCTestCase {
             AbsoluteScheduleValue(
                 startDate: basalStart.dateFlooredToTimeInterval(GlucoseMath.defaultDelta),
                 endDate: now.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration).dateCeiledToTimeInterval(GlucoseMath.defaultDelta),
-                value: .glucose(50)
+                value: 50
             ),
         ]
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         guard case .failure(AlgorithmError.sensitivityTimelineEndsTooEarly) = output.recommendationResult else {
             XCTFail("Expected sensitivityTimelineEndsTooEarly failure")
             return
@@ -454,7 +454,7 @@ final class LoopAlgorithmTests: XCTestCase {
             start: input.predictionStart,
             duration: input.recommendationInsulinModel.effectDuration
         )
-        let neededISFInterval = LoopAlgorithm.timelineIntervalForSensitivity(
+        let neededISFInterval = Algorithm.timelineIntervalForSensitivity(
             doses: input.doses,
             glucoseHistoryStart: input.glucoseHistory.first!.startDate,
             recommendationEffectInterval: recommendationEffectInterval
@@ -463,10 +463,10 @@ final class LoopAlgorithmTests: XCTestCase {
             AbsoluteScheduleValue(
                 startDate: neededISFInterval.start,
                 endDate:  neededISFInterval.end,
-                value: .glucose(50)
+                value: 50
             )
         ]
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         guard case .success = output.recommendationResult else {
             XCTFail("Expected recommendationResult success")
             return
@@ -485,7 +485,7 @@ final class LoopAlgorithmTests: XCTestCase {
         let entryDate = timelinesStart.addingTimeInterval(.minutes(-30))
         input.carbEntries.insert(FixtureCarbEntry(absorptionTime: .hours(3), startDate: entryDate, quantity: .carbs(20)), at: 0)
 
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
         guard case .failure(AlgorithmError.carbRatioOrSensitivityStartsAfterCarbEntry) = output.recommendationResult else {
             XCTFail("Expected carbRatioOrSensitivityStartsAfterCarbEntry failure")
             return
@@ -494,7 +494,7 @@ final class LoopAlgorithmTests: XCTestCase {
         // Extend both timelines back to the entry
         let firstCarbRatio = input.carbRatio.first!
         input.carbRatio.insert(AbsoluteScheduleValue(startDate: entryDate, endDate: firstCarbRatio.startDate, value: firstCarbRatio.value), at: 0)
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         guard case .failure(AlgorithmError.carbRatioOrSensitivityStartsAfterCarbEntry) = output.recommendationResult else {
             XCTFail("Expected failure while ISF still starts after the entry")
             return
@@ -502,7 +502,7 @@ final class LoopAlgorithmTests: XCTestCase {
 
         let firstSensitivity = input.sensitivity.first!
         input.sensitivity.insert(AbsoluteScheduleValue(startDate: entryDate, endDate: firstSensitivity.startDate, value: firstSensitivity.value), at: 0)
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         guard case .success = output.recommendationResult else {
             XCTFail("Expected recommendationResult success")
             return
@@ -532,12 +532,12 @@ final class LoopAlgorithmTests: XCTestCase {
             AbsoluteScheduleValue(
                 startDate: basalStart.dateFlooredToTimeInterval(GlucoseMath.defaultDelta),
                 endDate: now.addingTimeInterval(InsulinMath.defaultInsulinActivityDuration).dateCeiledToTimeInterval(GlucoseMath.defaultDelta),
-                value: .glucose(50)
+                value: 50
             ),
         ]
 
         input.useMidAbsorptionISF = true
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
         guard case .failure(AlgorithmError.sensitivityTimelineEndsTooEarly) = output.recommendationResult else {
             XCTFail("Expected sensitivityTimelineEndsTooEarly failure")
             return
@@ -567,7 +567,7 @@ final class LoopAlgorithmTests: XCTestCase {
             FixtureGlucoseSample(startDate: now.addingTimeInterval(.minutes(-0)), quantity: .glucose(120)),
         ]
 
-        var output = LoopAlgorithm.run(input: input)
+        var output = Algorithm.run(input: input)
 
         let basalAdjustment = output.recommendation!.automatic!.basalAdjustment
         XCTAssertEqual(basalAdjustment.unitsPerHour, 4.94, accuracy: 0.01)
@@ -590,7 +590,7 @@ final class LoopAlgorithmTests: XCTestCase {
         // Manual recommendation does not cut off doses in progress, like a running temp basal
         input.recommendationType = .manualBolus
 
-        output = LoopAlgorithm.run(input: input)
+        output = Algorithm.run(input: input)
         XCTAssertEqual(output.predictedGlucose.last!.quantity.doubleValue(for: .milligramsPerDeciliter), 105, accuracy: 0.5)
     }
 }

@@ -368,7 +368,7 @@ extension Collection where Element == BasalRelativeDose {
     ///   - end: The latest date of effects to return. If nil is passed, it will be calculated from the last sample end date plus the longestEffectDuration.
     ///   - delta: The interval between returned effects
     /// - Returns: An array of glucose effects for the duration of the doses
-    public func glucoseEffects(
+    func glucoseEffects(
         insulinSensitivityHistory: [AbsoluteScheduleValue<LoopQuantity>],
         from start: Date? = nil,
         to end: Date? = nil,
@@ -416,7 +416,7 @@ extension Collection where Element == BasalRelativeDose {
     ///   - end: The latest date of effects to return
     ///   - delta: The interval between returned effects
     /// - Returns: An array of glucose effects for the duration of the doses
-    public func glucoseEffectsMidAbsorptionISF(
+    func glucoseEffectsMidAbsorptionISF(
         longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
         insulinSensitivityHistory: [AbsoluteScheduleValue<LoopQuantity>],
         from start: Date? = nil,
@@ -508,7 +508,7 @@ extension Collection where Element == BasalRelativeDose {
     ///   - effectDates: The dates at which to calculate glucose effects
     ///   - delta: The interval below which to consider doses as momentary
     /// - Returns: An array of glucose effects for the duration of the doses
-    public func glucoseEffects(
+    func glucoseEffects(
         longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
         insulinSensitivityTimeline: [AbsoluteScheduleValue<LoopQuantity>],
         effectDates: [Date],
@@ -541,5 +541,40 @@ extension Collection where Element == BasalRelativeDose {
         }
 
         return values
+    }
+}
+
+public extension Collection where Element == BasalRelativeDose {
+    /// Glucose effects of the doses. Sensitivity is in mg/dL per unit.
+    func glucoseEffects(
+        insulinSensitivityHistory: [AbsoluteScheduleValue<Double>],
+        from start: Date? = nil,
+        to end: Date? = nil,
+        delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
+    ) -> [GlucoseEffect] {
+        glucoseEffects(insulinSensitivityHistory: insulinSensitivityHistory.mgdlQuantities, from: start, to: end, delta: delta)
+    }
+
+    /// Glucose effects of the doses using mid-absorption ISF. Sensitivity is in mg/dL per unit.
+    func glucoseEffectsMidAbsorptionISF(
+        longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
+        insulinSensitivityHistory: [AbsoluteScheduleValue<Double>],
+        from start: Date? = nil,
+        to end: Date? = nil,
+        delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
+    ) -> [GlucoseEffect] {
+        glucoseEffectsMidAbsorptionISF(longestEffectDuration: longestEffectDuration, insulinSensitivityHistory: insulinSensitivityHistory.mgdlQuantities,
+                                       from: start, to: end, delta: delta)
+    }
+
+    /// Glucose effects of the doses at the given dates. Sensitivity is in mg/dL per unit.
+    func glucoseEffects(
+        longestEffectDuration: TimeInterval = InsulinMath.defaultInsulinActivityDuration,
+        insulinSensitivityTimeline: [AbsoluteScheduleValue<Double>],
+        effectDates: [Date],
+        delta: TimeInterval = TimeInterval(/* minutes: */60 * 5)
+    ) -> [GlucoseEffect] {
+        glucoseEffects(longestEffectDuration: longestEffectDuration, insulinSensitivityTimeline: insulinSensitivityTimeline.mgdlQuantities,
+                       effectDates: effectDates, delta: delta)
     }
 }

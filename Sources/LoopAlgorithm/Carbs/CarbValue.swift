@@ -12,7 +12,7 @@ public struct CarbValue: SampleValue {
     public let endDate: Date
     public var value: Double
 
-    public var quantity: LoopQuantity {
+    var quantity: LoopQuantity {
         return LoopQuantity(unit: .gram, doubleValue: value)
     }
 

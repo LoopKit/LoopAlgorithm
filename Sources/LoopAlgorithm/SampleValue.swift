@@ -21,8 +21,9 @@ public extension TimelineValue {
 }
 
 
+/// A timeline value with an amount. Each refinement names its amount in a fixed unit, such as
+/// `GlucoseValue.mgdl` or `CarbEntry.grams`.
 public protocol SampleValue: TimelineValue {
-    var quantity: LoopQuantity { get }
 }
 
 

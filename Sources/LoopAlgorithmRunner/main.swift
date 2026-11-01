@@ -28,7 +28,7 @@ func main() {
 
     do {
         let input = try readInputFile(inputFilePath)
-        let output = LoopAlgorithm.run(input: input)
+        let output = Algorithm.run(input: input)
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

@@ -9,6 +9,14 @@ import Foundation
 
 
 public protocol CarbEntry: SampleValue {
+    /// The carbohydrate amount in grams
+    var grams: Double { get }
     var absorptionTime: TimeInterval? { get }
+}
+
+extension CarbEntry {
+    var quantity: LoopQuantity {
+        LoopQuantity(unit: .gram, doubleValue: grams)
+    }
 }
 

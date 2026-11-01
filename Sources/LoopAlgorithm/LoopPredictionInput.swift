@@ -22,7 +22,8 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
     public var basal: [AbsoluteScheduleValue<Double>]
 
     // Expected time range coverage: t-16h to t (eventually with mid-absorption isf changes, it will be t-10h to t)
-    public var sensitivity: [AbsoluteScheduleValue<LoopQuantity>]
+    // Insulin sensitivity in mg/dL per unit
+    public var sensitivity: [AbsoluteScheduleValue<Double>]
 
     // Expected time range coverage: t-10h to t+6h
     public var carbRatio: [AbsoluteScheduleValue<Double>]
@@ -48,7 +49,7 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
         doses: [InsulinDoseType],
         carbEntries: [CarbType],
         basal: [AbsoluteScheduleValue<Double>],
-        sensitivity: [AbsoluteScheduleValue<LoopQuantity>],
+        sensitivity: [AbsoluteScheduleValue<Double>],
         carbRatio: [AbsoluteScheduleValue<Double>],
         target: GlucoseRangeTimeline = [],
         algorithmEffectsOptions: AlgorithmEffectsOptions,
@@ -76,6 +77,11 @@ public struct LoopPredictionInput<CarbType: CarbEntry, GlucoseType: GlucoseSampl
 }
 
 
+extension LoopPredictionInput {
+    var sensitivityQuantities: [AbsoluteScheduleValue<LoopQuantity>] { sensitivity.mgdlQuantities }
+    var targetQuantities: QuantityRangeTimeline { target.quantities }
+}
+
 extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, GlucoseType == FixtureGlucoseSample, InsulinDoseType == FixtureInsulinDose {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -84,14 +90,11 @@ extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, Gluco
         self.doses = try container.decode([FixtureInsulinDose].self, forKey: .doses)
         self.carbEntries = try container.decode([FixtureCarbEntry].self, forKey: .carbEntries)
         self.basal = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .basal)
-        let sensitivityMgdl = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
-        self.sensitivity = sensitivityMgdl.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.value))}
+        self.sensitivity = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .sensitivity)
         self.carbRatio = try container.decode([AbsoluteScheduleValue<Double>].self, forKey: .carbRatio)
         if let targetMgdl = try container.decodeIfPresent([TargetEntry].self, forKey: .target) {
             self.target = targetMgdl.map {
-                let lower = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.lowerBound)
-                let upper = LoopQuantity(unit: .milligramsPerDeciliter, doubleValue: $0.upperBound)
-                return AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: lower...upper)
+                AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: $0.lowerBound...$0.upperBound)
             }
         } else {
             self.target = []
@@ -114,16 +117,15 @@ extension LoopPredictionInput: Codable where CarbType == FixtureCarbEntry, Gluco
         try container.encode(doses, forKey: .doses)
         try container.encode(carbEntries, forKey: .carbEntries)
         try container.encode(basal, forKey: .basal)
-        let sensitivityMgdl = sensitivity.map { AbsoluteScheduleValue(startDate: $0.startDate, endDate: $0.endDate, value: $0.value.doubleValue(for: .milligramsPerDeciliter)) }
-        try container.encode(sensitivityMgdl, forKey: .sensitivity)
+        try container.encode(sensitivity, forKey: .sensitivity)
         try container.encode(carbRatio, forKey: .carbRatio)
         if !target.isEmpty {
             let targetMgdl = target.map {
                 TargetEntry(
                     startDate: $0.startDate,
                     endDate: $0.endDate,
-                    lowerBound: $0.value.lowerBound.doubleValue(for: .milligramsPerDeciliter),
-                    upperBound: $0.value.upperBound.doubleValue(for: .milligramsPerDeciliter))
+                    lowerBound: $0.value.lowerBound,
+                    upperBound: $0.value.upperBound)
             }
             try container.encode(targetMgdl, forKey: .target)
         }

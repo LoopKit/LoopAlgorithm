@@ -10,14 +10,19 @@ import Foundation
 
 /// A quantity of carbs absorbed over a given date interval
 public struct AbsorbedCarbValue: SampleValue {
-    /// The quantity of carbs absorbed
-    public let observed: LoopQuantity
-    /// The quantity of carbs absorbed, clamped to the original prediction
-    public let clamped: LoopQuantity
-    /// The quantity of carbs entered as eaten
-    public let total: LoopQuantity
-    /// The quantity of carbs expected to still absorb
-    public let remaining: LoopQuantity
+    let observed: LoopQuantity
+    let clamped: LoopQuantity
+    let total: LoopQuantity
+    let remaining: LoopQuantity
+
+    /// Grams of carbs absorbed
+    public var observedGrams: Double { observed.doubleValue(for: .gram) }
+    /// Grams of carbs absorbed, clamped to the original prediction
+    public var clampedGrams: Double { clamped.doubleValue(for: .gram) }
+    /// Grams of carbs entered as eaten
+    public var totalGrams: Double { total.doubleValue(for: .gram) }
+    /// Grams of carbs expected to still absorb
+    public var remainingGrams: Double { remaining.doubleValue(for: .gram) }
     /// The dates over which absorption was observed
     public let observedDate: DateInterval
 
@@ -37,7 +42,12 @@ public struct AbsorbedCarbValue: SampleValue {
         return estimatedTimeRemaining > 0
     }
 
-    public var observedProgress: LoopQuantity {
+    /// Observed absorption as a fraction of the total entered
+    public var observedFraction: Double {
+        observedProgress.doubleValue(for: .percent)
+    }
+
+    var observedProgress: LoopQuantity {
         let gram = LoopUnit.gram
         let totalGrams = total.doubleValue(for: gram)
         let percent = LoopUnit.percent
@@ -54,7 +64,7 @@ public struct AbsorbedCarbValue: SampleValue {
 
     // MARK: SampleValue
 
-    public var quantity: LoopQuantity {
+    var quantity: LoopQuantity {
         return clamped
     }
 

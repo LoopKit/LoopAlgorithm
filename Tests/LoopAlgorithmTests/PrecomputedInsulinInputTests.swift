@@ -31,7 +31,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
         let start = input.glucoseHistory.last!.startDate
 
         // Standard prediction (full annotation inside generatePrediction)
-        let standard = LoopAlgorithm.generatePrediction(
+        let standard = Algorithm.generatePrediction(
             start: start,
             glucoseHistory: input.glucoseHistory,
             doses: input.doses,
@@ -45,7 +45,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
         // Pre-annotate once (ISF-independent); no effects → standard inner glucoseEffects path
         let precomputed = PrecomputedInsulinInput.annotate(doses: input.doses, basal: input.basal)
 
-        let fast = LoopAlgorithm.generatePrediction(
+        let fast = Algorithm.generatePrediction(
             start: start,
             glucoseHistory: input.glucoseHistory,
             precomputedInsulin: precomputed,
@@ -79,7 +79,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
         let input = try loadInput()
         let start = input.glucoseHistory.last!.startDate
 
-        let standard = LoopAlgorithm.generatePrediction(
+        let standard = Algorithm.generatePrediction(
             start: start,
             glucoseHistory: input.glucoseHistory,
             doses: input.doses,
@@ -95,7 +95,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
             .annotate(doses: input.doses, basal: input.basal)
             .withEffects(sensitivity: input.sensitivity)
 
-        let fast = LoopAlgorithm.generatePrediction(
+        let fast = Algorithm.generatePrediction(
             start: start,
             glucoseHistory: input.glucoseHistory,
             precomputedInsulin: precomputed,
@@ -116,7 +116,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
         let input = try loadInput()
         let start = input.glucoseHistory.last!.startDate
 
-        let standard = LoopAlgorithm.generatePrediction(
+        let standard = Algorithm.generatePrediction(
             start: start,
             glucoseHistory: input.glucoseHistory,
             doses: input.doses,
@@ -130,7 +130,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
         // Simulate EvalCore: build once, then pass the (unsliced) annotated set
         let sliced = PrecomputedInsulinInput.annotate(doses: input.doses, basal: input.basal)
 
-        let fromSlice = LoopAlgorithm.generatePrediction(
+        let fromSlice = Algorithm.generatePrediction(
             start: start,
             glucoseHistory: input.glucoseHistory,
             precomputedInsulin: sliced,
@@ -162,16 +162,8 @@ final class PrecomputedInsulinInputTests: XCTestCase {
 
         for multiplier in multipliers {
             // Scale ISF — O(n_isf_segments), negligible.
-            // Preserve whatever unit the fixture uses by scaling the raw double
-            // and re-wrapping in the same unit.
-            let scaledSensitivity = input.sensitivity.map { entry -> AbsoluteScheduleValue<LoopQuantity> in
-                let unit = entry.value.unit
-                let scaled = entry.value.doubleValue(for: unit) * multiplier
-                return AbsoluteScheduleValue(
-                    startDate: entry.startDate,
-                    endDate: entry.endDate,
-                    value: LoopQuantity(unit: unit, doubleValue: scaled)
-                )
+            let scaledSensitivity = input.sensitivity.map { entry in
+                AbsoluteScheduleValue(startDate: entry.startDate, endDate: entry.endDate, value: entry.value * multiplier)
             }
 
             // Compute effects once for this ISF value — O(D × T), not per-step
@@ -179,7 +171,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
             XCTAssertNotNil(precomputed.insulinEffects, "withEffects should populate insulinEffects")
 
             // Verify it produces the same result as the standard path with the same scaled ISF
-            let standard = LoopAlgorithm.generatePrediction(
+            let standard = Algorithm.generatePrediction(
                 start: start,
                 glucoseHistory: input.glucoseHistory,
                 doses: input.doses,
@@ -190,7 +182,7 @@ final class PrecomputedInsulinInputTests: XCTestCase {
                 useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection
             )
 
-            let fast = LoopAlgorithm.generatePrediction(
+            let fast = Algorithm.generatePrediction(
                 start: start,
                 glucoseHistory: input.glucoseHistory,
                 precomputedInsulin: precomputed,

@@ -10,7 +10,7 @@ import Foundation
 let UnitMolarMassBloodGlucose = 180.1558800000541
 let UnitMolarMassBloodGlucoseDivisible = UnitMolarMassBloodGlucose / 10
 
-public enum LoopUnit: Sendable, CaseIterable {
+enum LoopUnit: Sendable, CaseIterable {
     case gram
     case gramsPerUnit
     case internationalUnit
@@ -28,11 +28,11 @@ public enum LoopUnit: Sendable, CaseIterable {
     case minute
     case second
     
-    public init(from string: String) {
+    init(from string: String) {
         self = LoopUnit.allCases.first(where: { $0.unitString == string }) ?? .gram
     }
     
-    public func conversionFactor(toUnit: LoopUnit) -> Double? {
+    func conversionFactor(toUnit: LoopUnit) -> Double? {
         switch (self, toUnit) {
         case (.gram, .gram),
              (.gramsPerUnit, .gramsPerUnit),
@@ -108,7 +108,7 @@ public enum LoopUnit: Sendable, CaseIterable {
         }
     }
     
-    public var unitString: String {
+    var unitString: String {
         switch self {
         case .gram:
             return "g"
@@ -145,7 +145,7 @@ public enum LoopUnit: Sendable, CaseIterable {
         }
     }
     
-    public var localizedShortUnitString: String {
+    var localizedShortUnitString: String {
         switch self {
         case .millimolesPerLiter: return NSLocalizedString("mmol/L", comment: "The short unit display string for millimoles of glucose per liter")
         case .milligramsPerDeciliter: return NSLocalizedString("mg/dL", comment: "The short unit display string for milligrams of glucose per decilter")
@@ -155,7 +155,7 @@ public enum LoopUnit: Sendable, CaseIterable {
         }
     }
     
-    public func unitDivided(by unit: LoopUnit) -> LoopUnit {
+    func unitDivided(by unit: LoopUnit) -> LoopUnit {
         switch self {
         case .milligramsPerDeciliter:
             switch unit {
