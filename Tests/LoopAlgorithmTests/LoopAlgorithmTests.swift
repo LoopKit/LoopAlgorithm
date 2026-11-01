@@ -474,6 +474,41 @@ final class LoopAlgorithmTests: XCTestCase {
 
     }
 
+    func testCarbEntryBeforeTimelinesIsAnError() {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let url = Bundle.module.url(forResource: "meal-bolus-isf", withExtension: "json", subdirectory: "Fixtures")!
+        var input = try! decoder.decode(AlgorithmInputFixture.self, from: try! Data(contentsOf: url))
+
+        // A carb entry older than the start of the carb ratio and ISF timelines
+        let timelinesStart = min(input.carbRatio.first!.startDate, input.sensitivity.first!.startDate)
+        let entryDate = timelinesStart.addingTimeInterval(.minutes(-30))
+        input.carbEntries.insert(FixtureCarbEntry(absorptionTime: .hours(3), startDate: entryDate, quantity: .carbs(20)), at: 0)
+
+        var output = LoopAlgorithm.run(input: input)
+        guard case .failure(AlgorithmError.carbRatioOrSensitivityStartsAfterCarbEntry) = output.recommendationResult else {
+            XCTFail("Expected carbRatioOrSensitivityStartsAfterCarbEntry failure")
+            return
+        }
+
+        // Extend both timelines back to the entry
+        let firstCarbRatio = input.carbRatio.first!
+        input.carbRatio.insert(AbsoluteScheduleValue(startDate: entryDate, endDate: firstCarbRatio.startDate, value: firstCarbRatio.value), at: 0)
+        output = LoopAlgorithm.run(input: input)
+        guard case .failure(AlgorithmError.carbRatioOrSensitivityStartsAfterCarbEntry) = output.recommendationResult else {
+            XCTFail("Expected failure while ISF still starts after the entry")
+            return
+        }
+
+        let firstSensitivity = input.sensitivity.first!
+        input.sensitivity.insert(AbsoluteScheduleValue(startDate: entryDate, endDate: firstSensitivity.startDate, value: firstSensitivity.value), at: 0)
+        output = LoopAlgorithm.run(input: input)
+        guard case .success = output.recommendationResult else {
+            XCTFail("Expected recommendationResult success")
+            return
+        }
+    }
+
     func testIncompleteISFTimelineDetectedForMidAbsorptionISF() {
         let now = ISO8601DateFormatter().date(from: "2020-03-11T12:13:14-0700")!
         var input = AlgorithmInputFixture.mock(for: now)

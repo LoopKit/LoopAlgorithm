@@ -26,8 +26,18 @@ public struct GuardAndRunwayOutput: Equatable {
     /// The band's depth multiplier, from the volatility baseline.
     public var bandGain: Double { band.gain }
 
-    /// `glucose` lowered by the band as this run applied it; unchanged when the band was off.
+    /// `glucose` lowered by the band as the low guard saw it this run; unchanged when the band was off.
+    /// `AlgorithmOutput.predictedGlucose` is the forecast without the band.
     public func guarded(_ glucose: [PredictedGlucoseValue]) -> [PredictedGlucoseValue] {
         bandApplied ? LoopAlgorithm.volatilityBanded(glucose, band: band, volatility: volatility) : glucose
     }
+}
+
+/// What the slow retrospective correction did on one run, for display.
+public struct SlowRetrospectiveCorrectionOutput: Equatable {
+    /// The day-scale unexplained glucose change, mg/dL per 5 min: positive when glucose has been rising more
+    /// than the model expected.
+    public var level: Double
+    /// The multiplier applied to ISF on this run, 0.7–1.3.
+    public var multiplier: Double
 }

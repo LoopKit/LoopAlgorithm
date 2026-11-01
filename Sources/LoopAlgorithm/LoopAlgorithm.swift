@@ -15,6 +15,8 @@ public enum AlgorithmError: Error {
     case sensitivityTimelineStartsTooLate
     case sensitivityTimelineEndsTooEarly
     case futureBasalNotAllowed
+    /// The carb ratio or sensitivity timeline starts after the oldest carb entry.
+    case carbRatioOrSensitivityStartsAfterCarbEntry
 }
 
 public struct LoopAlgorithmEffects<CarbStatusType: CarbEntry> {
@@ -753,6 +755,7 @@ public struct LoopAlgorithm {
         // Now validate/recommend
         let result: Result<LoopAlgorithmDoseRecommendation,Error>
         var guardAndRunway: GuardAndRunwayOutput?
+        var slowRetrospectiveCorrection: SlowRetrospectiveCorrectionOutput?
 
         do {
             guard let latestGlucose = input.glucoseHistory.last else {
@@ -790,6 +793,16 @@ public struct LoopAlgorithm {
                 throw AlgorithmError.sensitivityTimelineEndsTooEarly
             }
 
+            // Make sure carb ratio and ISF cover every carb entry
+            if let oldestCarbEntry = input.carbEntries.map({ $0.startDate }).min() {
+                guard
+                    let carbRatioStart = input.carbRatio.first?.startDate, carbRatioStart <= oldestCarbEntry,
+                    let sensitivityStart = input.sensitivity.first?.startDate, sensitivityStart <= oldestCarbEntry
+                else {
+                    throw AlgorithmError.carbRatioOrSensitivityStartsAfterCarbEntry
+                }
+            }
+
             // Make sure Basal covers needed timeline
             guard let scheduledBasalRate = input.basal.closestPrior(to: input.predictionStart)?.value else {
                 throw AlgorithmError.basalTimelineIncomplete
@@ -799,35 +812,60 @@ public struct LoopAlgorithm {
                 throw AlgorithmError.missingSuspendThreshold
             }
 
-            prediction = generatePrediction(
-                start: input.predictionStart,
-                glucoseHistory: input.glucoseHistory,
-                doses: input.doses,
-                carbEntries: input.carbEntries,
-                basal: input.basal,
-                sensitivity: input.sensitivity,
-                carbRatio: input.carbRatio,
-                target: input.target,
-                algorithmEffectsOptions: .all,
-                useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection,
-                includingPositiveVelocityAndRC: input.includePositiveVelocityAndRC,
-                useMidAbsorptionISF: input.useMidAbsorptionISF,
-                carbAbsorptionModel: input.carbAbsorptionModel.model,
-                gradualTransitionsThreshold: input.gradualTransitionsThreshold,
-                emulation: input.emulation ?? AlgorithmEmulationOptions(),
-                experiments: input.experiments
-            )
+            func predict(sensitivity: [AbsoluteScheduleValue<LoopQuantity>]) -> LoopPrediction<LoopAlgorithmInputType.CarbType> {
+                generatePrediction(
+                    start: input.predictionStart,
+                    glucoseHistory: input.glucoseHistory,
+                    doses: input.doses,
+                    carbEntries: input.carbEntries,
+                    basal: input.basal,
+                    sensitivity: sensitivity,
+                    carbRatio: input.carbRatio,
+                    target: input.target,
+                    algorithmEffectsOptions: .all,
+                    useIntegralRetrospectiveCorrection: input.useIntegralRetrospectiveCorrection,
+                    includingPositiveVelocityAndRC: input.includePositiveVelocityAndRC,
+                    useMidAbsorptionISF: input.useMidAbsorptionISF,
+                    carbAbsorptionModel: input.carbAbsorptionModel.model,
+                    gradualTransitionsThreshold: input.gradualTransitionsThreshold,
+                    emulation: input.emulation ?? AlgorithmEmulationOptions(),
+                    experiments: input.experiments
+                )
+            }
+            prediction = predict(sensitivity: input.sensitivity)
 
-            // Experiment adjustments before dosing (no-ops when `experiments` is empty). The runway reserve
-            // reads the forecast before the volatility band lowers it; its band term is its own.
+            // Experiment adjustments before dosing (no-ops when `experiments` is empty).
             let experimentParameters = ExperimentParameters(
                 experiments: input.experiments,
                 volatilityBaseline: input.experiments.contains(.guardAndRunway)
                     ? (input.volatilityBaseline ?? GlucoseVolatility.baseline(input.glucoseHistory)) : nil)
+
+            // Slow retrospective correction: the level comes from the forecast at the scheduled ISF; the run
+            // then uses ISF × multiplier throughout.
+            var sensitivity = input.sensitivity
+            if let slow = experimentParameters.slowRetrospectiveCorrection {
+                let windowStart = input.predictionStart.addingTimeInterval(-slow.window)
+                let carbEffects = prediction.effects.carbStatus.dynamicGlucoseEffects(
+                    from: windowStart.addingTimeInterval(-GlucoseMath.defaultDelta),
+                    carbRatios: input.carbRatio,
+                    insulinSensitivities: input.sensitivity,
+                    absorptionModel: input.carbAbsorptionModel.model)
+                let level = slowRetrospectiveCorrectionLevel(
+                    counteraction: prediction.effects.insulinCounteraction, carbEffects: carbEffects,
+                    now: input.predictionStart, parameters: slow)
+                let multiplier = slowRetrospectiveCorrectionMultiplier(level: level, parameters: slow)
+                slowRetrospectiveCorrection = SlowRetrospectiveCorrectionOutput(level: level, multiplier: multiplier)
+                if multiplier != 1 {
+                    sensitivity = sensitivityScaled(input.sensitivity, by: multiplier)
+                    prediction = predict(sensitivity: sensitivity)
+                }
+            }
+
+            // The runway reserve reads the forecast without the volatility band; its band term is its own.
             let volatility: Double? = experimentParameters.needsVolatility ? GlucoseVolatility.sigma5(input.glucoseHistory) : nil
             var runwayShift = 0.0
             if let reserve = experimentParameters.runwayReserve, let volatility,
-               let sensitivity = input.sensitivity.closestPrior(to: input.predictionStart)?.value,
+               let sensitivity = sensitivity.closestPrior(to: input.predictionStart)?.value,
                let target = input.target.closestPrior(to: input.predictionStart)?.value
             {
                 let unit = LoopUnit.milligramsPerDeciliter
@@ -840,6 +878,8 @@ public struct LoopAlgorithm {
                     suspendThreshold: suspendThreshold.doubleValue(for: unit),
                     insulinModel: input.recommendationInsulinModel)
             }
+            // The volatility band lowers the forecast the low guard sees; the forecast itself is unchanged.
+            var guardForecast: [PredictedGlucoseValue]? = nil
             if let band = experimentParameters.volatilityBand, let volatility {
                 let bandApplied = !(band.carbGate && (prediction.activeCarbs ?? 0) > 0)
                 var bandDepth = 0.0
@@ -848,7 +888,7 @@ public struct LoopAlgorithm {
                     bandDepth = zip(prediction.glucose, banded).map {
                         $0.quantity.doubleValue(for: .milligramsPerDeciliter) - $1.quantity.doubleValue(for: .milligramsPerDeciliter)
                     }.max() ?? 0
-                    prediction.glucose = banded
+                    guardForecast = banded
                 }
                 guardAndRunway = GuardAndRunwayOutput(
                     volatility: volatility, bandApplied: bandApplied, bandDepth: bandDepth, runwayShift: runwayShift,
@@ -858,11 +898,11 @@ public struct LoopAlgorithm {
 
             let sensitivityForDosing: [AbsoluteScheduleValue<LoopQuantity>]
             if input.useMidAbsorptionISF {
-                sensitivityForDosing = input.sensitivity
+                sensitivityForDosing = sensitivity
             } else {
                 // This sets a single ISF value for the duration of the dose.
                 let sensitivityEnd = max(forecastEnd, prediction.effects.insulin.last?.startDate ?? .distantPast)
-                let sensitivityAtPredictionStart = input.sensitivity.first { $0.startDate <= input.predictionStart && $0.endDate >= input.predictionStart }!
+                let sensitivityAtPredictionStart = sensitivity.first { $0.startDate <= input.predictionStart && $0.endDate >= input.predictionStart }!
                 let sensitivityOverPrediction = AbsoluteScheduleValue(
                     startDate: sensitivityAtPredictionStart.startDate,
                     endDate: sensitivityEnd,
@@ -875,13 +915,22 @@ public struct LoopAlgorithm {
             // keeps the user's target.
             let correctionTarget = runwayShift > 0 && input.recommendationType != .manualBolus
                 ? targetLowered(input.target, by: runwayShift) : input.target
-            let correction = insulinCorrection(
+            var correction = insulinCorrection(
                 prediction: prediction.glucose,
                 at: input.predictionStart,
                 target: correctionTarget,
                 suspendThreshold: suspendThreshold,
                 sensitivity: sensitivityForDosing,
                 insulinModel: input.recommendationInsulinModel)
+            if let guardForecast {
+                correction = guarded(correction, by: insulinCorrection(
+                    prediction: guardForecast,
+                    at: input.predictionStart,
+                    target: correctionTarget,
+                    suspendThreshold: suspendThreshold,
+                    sensitivity: sensitivityForDosing,
+                    insulinModel: input.recommendationInsulinModel))
+            }
 
             let maxActiveInsulin = input.maxBolus * (input.maxActiveInsulinMultiplier ?? 2)
 
@@ -924,7 +973,8 @@ public struct LoopAlgorithm {
             dosesRelativeToBasal: prediction.dosesRelativeToBasal,
             activeInsulin: prediction.activeInsulin,
             activeCarbs: prediction.activeCarbs,
-            guardAndRunway: guardAndRunway
+            guardAndRunway: guardAndRunway,
+            slowRetrospectiveCorrection: slowRetrospectiveCorrection
         )
     }
 }
